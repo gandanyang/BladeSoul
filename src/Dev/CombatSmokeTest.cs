@@ -90,6 +90,42 @@ public partial class CombatSmokeTest : Node3D
         Check(player.Health.Current == playerHpBefore, "玩家不该在打木桩时掉血");
         Check(player.Machine.Current is IdleState, $"玩家出招结束后应回到 IdleState，实际是 {player.Machine.Current?.GetType().Name}");
 
+        // ── 移动稳定性回归测试 ──
+        // 曾经的 bug：相机臂挂在身体下面、跟着身体一起转，而移动方向又来自相机，
+        // 于是角色去追一个跟着自己转的目标 → 边移动边原地打转。
+        // 这个测试就是钉死那个反馈回路：按住一个方向走 1 秒，朝向必须在十几帧内收敛。
+        Input.ActionPress("move_right");
+
+        Vector3 posMid = Vector3.Zero;
+        Vector3 posEnd = Vector3.Zero;
+        float yawEarly = 0f;
+        float yawLate = 0f;
+
+        for (int i = 0; i < 60; i++)
+        {
+            await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
+
+            if (i == 29)
+                posMid = player.GlobalPosition;
+            else if (i == 44)
+                yawEarly = player.Rotation.Y;
+            else if (i == 59)
+            {
+                posEnd = player.GlobalPosition;
+                yawLate = player.Rotation.Y;
+            }
+        }
+
+        Input.ActionRelease("move_right");
+
+        float travelled = new Vector2(posEnd.X - posMid.X, posEnd.Z - posMid.Z).Length();
+        float yawDriftDeg = Mathf.RadToDeg(Mathf.Abs(Mathf.AngleDifference(yawEarly, yawLate)));
+
+        GD.Print($"[冒烟] 移动：后半段位移 {travelled:F2} m，后 15 帧朝向漂移 {yawDriftDeg:F1} 度");
+
+        Check(travelled > 1.0f, $"按住 move_right 30 帧只走了 {travelled:F2} m：移动没有生效");
+        Check(yawDriftDeg < 5f, $"移动时朝向仍在不停转（后 15 帧漂移 {yawDriftDeg:F1} 度）：相机跟随身体转，导致原地打转");
+
         Report();
     }
 

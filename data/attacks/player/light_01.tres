@@ -14,5 +14,5 @@ CancelFromRecoveryFrame = 6
 Damage = 10
 PostureDamage = 8
 Knockback = 0.35
-AdvanceDistance = 0.8
+AdvanceDistance = 0.35
 AnimName = "light_01"

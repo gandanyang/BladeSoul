@@ -63,13 +63,19 @@ public sealed class AttackState : ActorState
         AttackData current = _attacks[_sequence.StepIndex];
         Actor.PrimaryHitbox?.SetActive(_sequence.IsActive);
 
-        // 三段位移都集中在"前摇 + 判定"期间，后摇站住不动。
-        bool advancing = _sequence.Frame < current.ActiveEnd;
-        if (advancing && current.AdvanceDistance > 0f)
+        // 步进：只在"前摇 + 判定"期间推进，后摇站住不动；
+        // 速度**前快后慢**（权重 1.6 → 0.4，均值 1.0，总位移仍等于 AdvanceDistance）。
+        // 用整招恒定速度会变成"滑过去"——那是走路不是出刀。
+        // 出刀应该是"踏进去，然后站定"。
+        int advanceEnd = Mathf.Max(1, current.ActiveEnd);
+        if (_sequence.Frame < advanceEnd && current.AdvanceDistance > 0f)
         {
+            float t = _sequence.Frame / (float)advanceEnd;
+            float weight = 1.6f - 1.2f * t;
+            float perFrame = current.AdvanceDistance * weight / advanceEnd;
+
             Vector3 forward = -Actor.GlobalTransform.Basis.Z;
             forward.Y = 0f;
-            float perFrame = current.AdvanceDistance / Mathf.Max(1, current.ActiveEnd);
             Actor.DesiredVelocity = forward.Normalized() * (perFrame * Utils.Frames.PerSecond);
         }
 

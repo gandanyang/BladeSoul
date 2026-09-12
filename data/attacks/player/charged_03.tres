@@ -14,6 +14,6 @@ CancelFromRecoveryFrame = -1
 Damage = 72
 PostureDamage = 100
 Knockback = 2.0
-AdvanceDistance = 1.5
+AdvanceDistance = 0.8
 Parryable = false
 AnimName = "charged_03"

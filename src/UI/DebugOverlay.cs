@@ -182,6 +182,15 @@ public partial class DebugOverlay : CanvasLayer
             GD.Print($"[调试面板] F5 判定框：{(_drawShapes ? "on" : "off")}，{_wireLines} 条线段 / {_actors.Count} 个单位");
             foreach (string line in _wireDiag)
                 GD.Print(line);
+
+            // F4 没法在无头下"真挨一刀"验证，但可以验证整条写入链路：
+            // 往 IDebugCheatable 写 true 之后，只读侧 ICombatActorDebug.IsInvulnerable 必须立刻为 true。
+            _invulnerable = true;
+            ApplyInvulnerable();
+            GD.Print($"[调试面板] F4 无敌链路：{ProbeCheatLink()}");
+            _invulnerable = false;
+            ApplyInvulnerable();
+
             GD.Print($"[调试面板] {DumpArg}：面板文本输出完毕（逻辑帧 {NowFrame()}）。");
             GetTree().Quit();
             return;
@@ -452,6 +461,26 @@ public partial class DebugOverlay : CanvasLayer
         }
 
         return false;
+    }
+
+    /// <summary>F4 的自证：写进去之后，只读侧要立刻看得到。</summary>
+    private string ProbeCheatLink()
+    {
+        foreach ((Node node, ICombatActorDebug debug) in _actors)
+        {
+            if (!GodotObject.IsInstanceValid(node) || !IsPlayerNode(node))
+                continue;
+
+            if (node is not IDebugCheatable)
+                return $"玩家 {debug.DebugName} 没实现 IDebugCheatable（F4 无效）";
+
+            bool reported = debug.IsInvulnerable;
+            return reported
+                ? $"写 DebugInvulnerable=true → ICombatActorDebug.IsInvulnerable=true ✓"
+                : $"写 DebugInvulnerable=true 但 IsInvulnerable 仍为 false ✗";
+        }
+
+        return "场上没有玩家单位（F4 无处可写）";
     }
 
     // ─────────────────────────────────────────────────────────────

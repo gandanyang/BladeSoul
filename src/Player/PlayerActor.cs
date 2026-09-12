@@ -28,6 +28,9 @@ public partial class PlayerActor : CombatActor
 	[Export] public Color BodyColor { get; set; } = new(0.22f, 0.26f, 0.34f);
 	[Export] public Color AccentColor { get; set; } = new(0.55f, 0.16f, 0.14f);
 
+	/// <summary>相机支点相对脚底的高度（米）。</summary>
+	[Export] public float CameraHeight { get; set; } = 1.45f;
+
 	/// <summary>玩家不会被一闪秒杀（01 文档：任何机制都不该一击终结玩家）。</summary>
 	public override EnemyTier IssenTier => EnemyTier.Boss;
 
@@ -62,8 +65,14 @@ public partial class PlayerActor : CombatActor
 	{
 		_cameraPivot = GetNode<Node3D>("CameraPivot");
 		_springArm = GetNode<SpringArm3D>("CameraPivot/SpringArm3D");
-		_cameraPivot.Position = new Vector3(0f, 1.45f, 0f);
 		_springArm.RotationDegrees = new Vector3(-12f, 0f, 0f);
+
+		// ★ 相机臂必须和身体朝向**解耦**。
+		// 它挂在玩家下面，若跟着身体转就会形成反馈回路：
+		// 移动方向来自相机 → 角色转向移动方向 → 相机跟着转 → 移动方向又变了……
+		// 表现就是"边移动边原地打转"。TopLevel 让它只吃世界变换，
+		// 位置由 SyncCameraRig() 每帧手动跟随身体。
+		_cameraPivot.TopLevel = true;
 
 		_rig = new BlockoutRig();
 		_rig.Build(BodyColor, AccentColor, true);
@@ -75,6 +84,11 @@ public partial class PlayerActor : CombatActor
 			Machine.Get<AttackState>().Configure(Attacks.BuildLightCombo());
 
 		Input.MouseMode = Input.MouseModeEnum.Captured;
+	}
+
+	private void SyncCameraRig()
+	{
+		_cameraPivot.GlobalPosition = GlobalPosition + new Vector3(0f, CameraHeight, 0f);
 	}
 
 	public override void _UnhandledInput(InputEvent @event)
@@ -104,6 +118,7 @@ public partial class PlayerActor : CombatActor
 	/// </summary>
 	protected override void PollLocalInput()
 	{
+		SyncCameraRig();
 		_buffer.Tick();
 
 		if (Input.IsActionJustPressed("attack"))
