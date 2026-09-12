@@ -1,4 +1,4 @@
-[gd_scene load_steps=11 format=3]
+[gd_scene load_steps=12 format=3]
 
 [ext_resource type="Script" path="res://src/Core/CombatArbiter.cs" id="1_arbiter"]
 [ext_resource type="PackedScene" path="res://scenes/actors/Player.tscn" id="2_player"]
@@ -6,6 +6,7 @@
 [ext_resource type="PackedScene" path="res://scenes/actors/AttackingDummy.tscn" id="4_attacker"]
 [ext_resource type="PackedScene" path="res://scenes/actors/RespawnDummy.tscn" id="5_respawn"]
 [ext_resource type="PackedScene" path="res://scenes/actors/SpearDummy.tscn" id="6_spear"]
+[ext_resource type="Script" path="res://src/Core/BattleReset.cs" id="7_reset"]
 
 [sub_resource type="Environment" id="Environment_dojo"]
 background_mode = 1
@@ -46,6 +47,9 @@ shape = SubResource("BoxShape3D_floor")
 
 [node name="CombatArbiter" type="Node" parent="."]
 script = ExtResource("1_arbiter")
+
+[node name="BattleReset" type="Node" parent="."]
+script = ExtResource("7_reset")
 
 [node name="Player" parent="." instance=ExtResource("2_player")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 6)

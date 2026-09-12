@@ -30,6 +30,28 @@ public partial class ActorStats : Resource
 
     [Export] public float TurnSpeed { get; set; } = 12f;
 
+    [ExportGroup("喝血")]
+    /// <summary>每关可喝次数（02 §2.4：3~5 次，宽松，不是稀有资源）。</summary>
+    [Export] public int HealCharges { get; set; } = 4;
+
+    /// <summary>起手段帧数：掏壶。此段**可以被打断**，且被打断则不消耗次数。</summary>
+    [Export] public int HealStartupFrames { get; set; } = 10;
+
+    /// <summary>饮用段帧数：进入此段后受击**不再打断动作**，但**伤害照常结算**。</summary>
+    [Export] public int HealDrinkFrames { get; set; } = 34;
+
+    /// <summary>收招段帧数：可被闪避/防御取消。</summary>
+    [Export] public int HealRecoveryFrames { get; set; } = 10;
+
+    /// <summary>一次喝血回复的最大血量百分比。</summary>
+    [Export] public float HealPercent { get; set; } = 0.4f;
+
+    /// <summary>
+    /// 死亡到"原地重开完成"的等待帧数（T14）。默认 60 帧 = 1 秒，
+    /// 远低于 01 §0 规则 1 的 180 帧上限，留出足够的余量给死亡表现。
+    /// </summary>
+    [Export] public int DeathRestartDelayFrames { get; set; } = 60;
+
     [ExportGroup("档次")]
     [Export] public EnemyTier Tier { get; set; } = EnemyTier.Grunt;
 }

@@ -13,7 +13,7 @@ namespace Oniblade.Player;
 /// 玩家。它只负责两件事：**把输入翻译成意图**，以及**把状态翻译成画面**。
 /// 判定、伤害、体干全部交给 <see cref="CombatActor"/> 与裁决器。
 /// </summary>
-public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListener
+public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListener, IHealHost
 {
 	private static readonly PlayerAction[] WatchedActions = Enum.GetValues<PlayerAction>();
 
@@ -53,6 +53,9 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 
 	/// <summary>本地帧号，只给"快速重按防御"判定用（02 §8）。</summary>
 	private int _localFrame;
+
+	/// <summary>死亡后到原地重开的剩余帧数（T14）。0 = 没在等重开。</summary>
+	private int _restartCountdownFrames;
 
 	/// <summary>上一次松开防御的帧号；从未松过为 -1。</summary>
 	private int _lastGuardReleaseFrame = -1;
@@ -112,6 +115,9 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 		if (EventBus.Instance is { } bus)
 			Gauntlet.Attach(bus);
 
+		// 带满次数进场（BOSS 战前 / 死亡重开后由 T14 调 RefillHealCharges）。
+		RefillHealCharges();
+
 		if (Attacks is not null)
 			Machine.Get<AttackState>().Configure(Attacks.BuildLightCombo());
 
@@ -129,6 +135,7 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 		machine.Add(new GuardState());
 		machine.Add(new DeflectState());
 		machine.Add(new DodgeState());
+		machine.Add(new HealState());
 	}
 
 	/// <summary>防御键是否按住（<see cref="IGuardInput"/>）。敌人不实现它，所以不受防御状态影响。</summary>
@@ -185,7 +192,13 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 			_buffer.Push(PlayerAction.Guard);
 		if (Input.IsActionJustPressed("dodge"))
 			_buffer.Push(PlayerAction.Dodge);
+		if (Input.IsActionJustPressed("item_use"))
+			_buffer.Push(PlayerAction.ItemUse);
 
+		// 顺序即优先级：补给最后生效。
+		// 三个方法都用延迟切换（Change/ForceChange），同一个物理帧里
+		// 后面的调用会覆盖前面的 —— 所以"保命动作优先于补给动作"是白拿的。
+		TryEnterHeal();
 		TryEnterDodge();
 		TryEnterGuard();
 	}
@@ -237,6 +250,17 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 				source = GuardEntrySource.Neutral;
 				break;
 
+			// 喝血：**饮用段**不能被防御自己取消。
+			// 那一段的全部承诺就是"玩家永远能喝完"，而按住防御是玩家的常态姿势——
+			// 若允许取消，实际效果就是"只要按着防御就永远喝不进去"。
+			// 起手（掏壶）与收招（放回）允许取消，这是 02 §2.4 明文写的。
+			case HealState heal:
+				if (heal.Phase == HealPhase.Drink)
+					return;
+
+				source = GuardEntrySource.Neutral;
+				break;
+
 			default:
 				source = GuardEntrySource.Neutral;
 				break;
@@ -280,6 +304,10 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 	private void TryEnterDodge()
 	{
 		if (IsDead || Machine.Current is StaggerState or DodgeState)
+			return;
+
+		// 喝血的饮用段不能被闪避自己取消（理由同 TryEnterGuard 里的注释）。
+		if (Machine.Current is HealState healing && healing.Phase == HealPhase.Drink)
 			return;
 
 		// 攻击中：只有进入后摇的取消窗之后才允许被闪避取消（02 §1 取消表）。
@@ -330,6 +358,106 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 
 		if (Machine is { Current: DodgeState dodge })
 			dodge.OnAttackEvaded();
+	}
+
+	// ── 喝血（T18 / 02 §2.4）──────────────────────────────────────
+
+	/// <summary>还剩几次喝血。次数耗尽后按 <c>item_use</c> 不会有任何反应。</summary>
+	public int HealChargesLeft { get; private set; }
+
+	/// <summary>
+	/// 补满喝血次数。BOSS 战前与死亡重开后调用（01 §0 规则 1：
+	/// 死亡不永久消耗资源，所以补给必须是免费且自动的）。
+	/// T18 只负责把它做成公开方法，真正的调用点在 T14 的重开协议里。
+	/// </summary>
+	public void RefillHealCharges() => HealChargesLeft = Stats?.HealCharges ?? 0;
+
+	void IHealHost.ConsumeHealCharge()
+	{
+		if (HealChargesLeft > 0)
+			HealChargesLeft--;
+	}
+
+	int IHealHost.ApplyHeal(int requested)
+	{
+		int before = Health.Current;
+		Health.Heal(requested);
+		return Health.Current - before;
+	}
+
+	/// <summary>
+	/// 喝血键（<c>item_use</c>）→ <see cref="HealState"/>。
+	///
+	/// 与攻击/闪避一样走输入缓冲：按了就有反应，不会因为在后摇里而被吞掉。
+	/// 没次数时**不消费缓冲**（提前 return），所以"没次数"这件事不会被误判成"按了没用"。
+	/// </summary>
+	private void TryEnterHeal()
+	{
+		if (IsDead || HealChargesLeft <= 0)
+			return;
+
+		if (Machine.Current is StaggerState or HealState or DodgeState)
+			return;
+
+		// 攻击中：只有后摇的取消窗之后才允许被喝血取消（与防御/闪避同一张表）。
+		if (Machine.Current is AttackState attack && !IsAttackCancelWindowOpen(attack))
+			return;
+
+		if (!_buffer.Consume(PlayerAction.ItemUse, InputBufferFrames))
+			return;
+
+		HealState heal = Machine.Get<HealState>();
+		heal.StartupFrames = Stats?.HealStartupFrames ?? 0;
+		heal.DrinkFrames = Stats?.HealDrinkFrames ?? 0;
+		heal.RecoveryFrames = Stats?.HealRecoveryFrames ?? 0;
+		heal.HealAmount = Mathf.RoundToInt((Stats?.MaxHealth ?? 100) * (Stats?.HealPercent ?? 0f));
+
+		Machine.Change<HealState>();
+	}
+
+	// ── 死亡与原地重开（T14 / 01 §0 规则 1）─────────────────────
+
+	/// <summary>
+	/// 死亡只做一件事：起一个倒计时。**真正的复位交给 <see cref="BattleReset"/>**——
+	/// 因为"原地重开"必须同时复位敌人，玩家自己去干这件事会越权。
+	/// </summary>
+	protected override void OnDeath() => _restartCountdownFrames = Stats?.DeathRestartDelayFrames ?? 0;
+
+	/// <summary>
+	/// 倒计时必须在**基类跑完之后**自己做：<see cref="CombatActor"/> 在 <c>IsDead</c> 时
+	/// 会直接 return（死人不动状态机），所以重开逻辑没地方寄生。
+	/// 与 <c>TrainingDummy._PhysicsProcess</c> 是同一个手法。
+	/// </summary>
+	public override void _PhysicsProcess(double delta)
+	{
+		base._PhysicsProcess(delta);
+
+		if (_restartCountdownFrames <= 0)
+			return;
+
+		_restartCountdownFrames--;
+
+		if (_restartCountdownFrames == 0)
+			BattleReset.Instance?.RestartBattle();
+	}
+
+	/// <summary>
+	/// 玩家这一侧的复位：清掉只属于玩家的临时状态，并把喝血次数补满
+	/// （01 §0 规则 2 + T18 卡片：死亡后自动补满，不永久消耗）。
+	/// 持久资源（升级、魄、侵蚀）在这里**故意什么都不做**。
+	/// </summary>
+	public override void ResetForBattle()
+	{
+		_restartCountdownFrames = 0;
+		_localFrame = 0;
+		_lastGuardReleaseFrame = -1;
+		_guardHeldLastFrame = false;
+		_buffer.Clear();
+		Gauntlet.SetDeepAbsorbing(false);
+
+		RefillHealCharges();
+
+		base.ResetForBattle();
 	}
 
 	public override bool ConsumeAttackInput()

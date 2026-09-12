@@ -101,6 +101,19 @@ public partial class TrainingDummy : CombatActor
 		_rig.Visible = false;
 	}
 
+	/// <summary>
+	/// T14：复位时**必须把重生计时也清掉**，否则重开后它会卡在"死亡等待"里——
+	/// 玩家会看到一个已经死掉、却在原地等着重生的假人，而它永远不会重生
+	/// （因为重开已经把它救活了，<c>IsWaitingToRespawn</c> 变回 false）。
+	/// </summary>
+	public override void ResetForBattle()
+	{
+		_respawnFramesLeft = 0;
+		_rig.Visible = true;
+
+		base.ResetForBattle();
+	}
+
 	private void Respawn()
 	{
 		GlobalPosition = _spawnPosition;

@@ -277,10 +277,20 @@ public partial class DebugOverlay : CanvasLayer
         _slowMotion = false;
         _invulnerable = false;
         _drawShapes = false;
-        _actors.Clear();
         _stats.Reset();
 
-        GD.Print("[调试面板] F7 重开当前战斗（ReloadCurrentScene；原地重开协议见 08 §P1-2，属 M1）");
+        // T14：改成调用**原地重开协议**，不再重载场景。
+        // 重载会把升级、魄、侵蚀、喝血次数全部抹掉，那等于给死亡加了一次
+        // 隐性惩罚（01 §0 规则 1 不允许），而且重载本身要几百毫秒。
+        if (BattleReset.Instance is { } reset)
+        {
+            int count = reset.RestartBattle();
+            GD.Print($"[调试面板] F7 原地重开（复位 {count} 个单位，第 {reset.RestartCount} 次）");
+            return;
+        }
+
+        // 场景里没放 BattleReset（比如纯训练场景）才退回到重载。
+        GD.Print("[调试面板] F7 场景里没有 BattleReset，退回重载场景");
         Error err = GetTree().ReloadCurrentScene();
         if (err != Error.Ok)
             GD.PrintErr($"[调试面板] 重开失败：{err}");

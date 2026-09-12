@@ -62,6 +62,13 @@ public abstract partial class CombatActor : CharacterBody3D, ICombatActorDebug, 
 	/// <summary>被一闪时按哪个档次结算收益。玩家覆盖成 Boss（永不被一闪秒杀）。</summary>
 	public virtual EnemyTier IssenTier => Stats?.Tier ?? EnemyTier.Grunt;
 
+	/// <summary>
+	/// 进场时的位置与朝向。T14 的原地重开靠它把单位放回原位。
+	/// 在 <c>_Ready</c> 的末尾捕获——**在 <c>OnActorReady()</c> 之后**，
+	/// 这样子类在 OnActorReady 里做的摆位也会被算进"原位"。
+	/// </summary>
+	public Transform3D SpawnTransform { get; private set; }
+
 	/// <summary>死后是否掉落魄。玩家不掉（03 §6.1 说的是魔骸的魄）。</summary>
 	public virtual bool DropsSoulOnDeath => true;
 
@@ -108,6 +115,7 @@ public abstract partial class CombatActor : CharacterBody3D, ICombatActorDebug, 
 		Machine.Start<IdleState>();
 
 		OnActorReady();
+		SpawnTransform = GlobalTransform;
 	}
 
 	public override void _PhysicsProcess(double delta)
@@ -404,6 +412,45 @@ public abstract partial class CombatActor : CharacterBody3D, ICombatActorDebug, 
 		}
 
 		OnDeath();
+	}
+
+	/// <summary>
+	/// 原地复位（T14 的重开协议调用）。**只加不改**：这个方法不改变任何既有语义，
+	/// 只在 <see cref="Core.BattleReset"/> 主动调用时生效。
+	///
+	/// 复位内容按 T14 规则 3 逐项对齐：位置、朝向、血量、体干、状态机、buff、顿帧。
+	/// 子类要补自己的东西（重生计时、表现层、冷却）时覆写并调 <c>base</c>。
+	///
+	/// 刻意**不碰**持久资源：升级、魄、侵蚀、喝血次数一律留在玩家身上
+	/// （01 §0 规则 1：死亡没有持久性惩罚）。
+	/// </summary>
+	public virtual void ResetForBattle()
+	{
+		GlobalTransform = SpawnTransform;
+
+		Velocity = Vector3.Zero;
+		DesiredVelocity = Vector3.Zero;
+		HasDesiredYaw = false;
+
+		_hitStopFrames = 0;
+		_deflectChainResetFrames = 0;
+
+		IssenBuff = IssenKind.None;
+		IssenBuffFramesLeft = 0;
+		DeflectWindowFramesLeft = 0;
+		DeflectChain = 0;
+
+		IsGuarding = false;
+		IsDead = false;
+
+		Health.Heal(Health.Max);
+		Posture.Reset();
+
+		PrimaryHitbox?.SetActive(false);
+		PrimaryHitbox?.SetAttack(null);
+		SetCurrentAttack(string.Empty);
+
+		Machine.ForceChange<IdleState>();
 	}
 
 	// ── ICombatActorDebug（只读视图）─────────────────────────────

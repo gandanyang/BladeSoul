@@ -80,6 +80,19 @@ public partial class AttackingDummy : CombatActor
 	/// <summary>攻击结束才起算冷却，这样"间隔"说的是两次**发动**之间的间隔。</summary>
 	public override void OnAttackEnded() => _cooldownFrames = AttackIntervalFrames;
 
+	/// <summary>
+	/// T14：复位时把冷却与出招记录清掉。
+	/// 不清冷却的话，重开瞬间它可能正卡在"刚砍完、还要等 60 帧"的状态里，
+	/// 玩家会以为自己重开失败了（明明复位了却没人打我）。
+	/// </summary>
+	public override void ResetForBattle()
+	{
+		_cooldownFrames = 0;
+		_attackFrames.Clear();
+
+		base.ResetForBattle();
+	}
+
 	protected override void OnTickVisual(float dt, float speed01)
 	{
 		if (_cooldownFrames > 0)
