@@ -28,6 +28,9 @@
 | T9 | `BossPhaseProfile` 数据层（08 §3 P2-2） | 待派发 | ⚪ 未开始 | — |
 | **T10** | **连打防御惩罚覆盖中立态**（02 §8 裁定） | 执行 agent | 🔵 进行中 | T6 |
 | T11 | **弹开/一闪的职责边界**（02 §3 裁定：一闪应对一切，弹开只应对一般攻击） | 制作人 | ✅ 完成 | — |
+| **T12** | **危攻击预警 + 危·突刺枪兵**（02 §3 裁定的连带后果） | 执行 agent | 🔵 进行中 | T11 |
+| T13 | 闪避（`DodgeState` + 无敌帧 + 完美闪避授予避一闪 buff） | 待派发（等 T10 放开 `PlayerActor.cs`） | ⚪ 未开始 | T10 |
+| T14 | 死亡与重开协议（≤3 秒原地重开，08 §3 P1-2） | 待派发 | ⚪ 未开始 | T13 |
 
 ### M1 的唯一验收标准
 
@@ -306,3 +309,54 @@
 - **不要改** `CombatActor.cs` / `CombatResolver.cs` / `CombatTuning.cs` / `CombatWindow.cs` 的既有语义。
 - 不要执行 `git commit`。
 - 不要停下来问我；有歧义按 02 §8 的裁定文本判断，并在报告里写明。
+
+---
+
+## T12 · 危攻击预警 + 危·突刺枪兵
+
+**背景**：02 §3 刚定的裁定是「**一闪应对一切攻击，弹开只应对一般攻击**」。
+它有一个直接后果：**玩家如果分不清"一般"和"危"，就会拿弹开去应付危攻击，然后直接挨打。**
+所以「危」预警从"可及性选项"升级为**机制必需**——它不是锦上添花，它是这条裁定能成立的前提。
+
+### 交付物
+
+| 文件 | 内容 |
+|---|---|
+| `src/Combat/PerilousCue.cs`（新） | 可复用的预警标记：`Show(PerilousKind kind, int frames)` / `Hide()`。灰盒期用红色自发光球 + 闪烁即可 |
+| `src/Combat/CombatActor.cs`（改） | `OnAttackStarted` 的**基类实现**里统一处理：`data.Perilous` 时播放分型音效 + 显示预警；判定帧结束（`OnAttackEnded`）时隐藏 |
+| `scenes/actors/SpearDummy.tscn`（新）+ `data/actors/spear_dummy.tres`（新） | 复用现成的 `AttackingDummy` 脚本，只把 `Attack` 指向 `res://data/attacks/enemies/perilous_thrust.tres` |
+| `scenes/levels/Dojo.tscn`（改） | 放一个枪兵假人（`ActorId` 必须唯一，别和 100/101 撞） |
+
+### 为什么预警放在基类而不是每个敌人各写一遍
+
+预警是**机制必需**，不是某个敌人的特色。放在 `CombatActor.OnAttackStarted` 的基类实现里，
+将来任何新敌人（BOSS、精英）**自动获得**，不会有人忘记加。
+子类覆写时必须调 `base.OnAttackStarted(data)`。
+
+### 音效
+
+`AudioDirector` 已经有了，直接调：
+`AudioDirector.Instance?.PlayCombat(CombatSfx.PerilousThrust)`（横扫 / 抓取同理）。
+07 §2.2 要求三种**只靠音高区分**——这三个音效在 T3 已经按高/中/低生成好了，不用你重新做。
+
+### 验收（**必须拿数据对比，这是本任务的核心价值**）
+
+复用 `scenes/tests/DeflectTraining.tscn` 的机器人思路，做一次对照实验并打印数字：
+
+| 靶子 | 机器人行为 | 期望 |
+|---|---|---|
+| 横斩假人（一般攻击） | 每次都在窗口内按防御 | **弹开 4 / 挨打 0** |
+| 枪兵假人（危·突刺） | 同样在窗口内按防御 | **弹开 0 / 格挡 N / 挨打 0** |
+
+第二行正是 T11 那条裁定的可执行证明：**弹开对危攻击无效，但格挡仍然保命**。
+如果枪兵那边弹出了 `弹开 > 0`，说明裁定没有真正落到数据上，回来报告。
+
+另外断言一次：枪兵发起攻击时，`OnAttackStarted` 确实走了 `Perilous` 分支
+（打印 `PerilousKind` 即可）。
+
+### 硬约束
+
+- **不要改** `CombatResolver.cs` / `CombatTuning.cs` / `src/Combat/Data/*` / `PlayerActor.cs` / `src/Combat/States/*`。
+  另一个 agent 正在并行改 `PlayerActor.cs` 和 `data/difficulty/`。
+- `tools\check.ps1` 必须全绿（现在 5 步）。
+- 不要执行 `git commit`。不要停下来问我；有歧义按 02 §3 的裁定文本判断，并在报告里写明。
