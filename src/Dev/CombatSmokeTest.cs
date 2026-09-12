@@ -131,6 +131,7 @@ public partial class CombatSmokeTest : Node3D
         var respawn = Load<TrainingDummy>("res://scenes/actors/RespawnDummy.tscn");
         respawn.Name = "RespawnDummy";
         respawn.Position = new Vector3(4f, 0.1f, -2f);
+        respawn.RespawnDelayFrames = 45;   // 测试里缩短等待，机制不变
         AddChild(respawn);
         await WaitPhysicsFrames(10);
 
@@ -149,6 +150,42 @@ public partial class CombatSmokeTest : Node3D
         Check(respawn.RespawnCount == 1, $"重生计数应为 1，实际 {respawn.RespawnCount}（可能重生逻辑跑了多次）");
         Check(respawn.Health.Current == respawn.Health.Max, $"重生后血量没回满：{respawn.Health.Current}/{respawn.Health.Max}");
         Check(respawn.Posture.Current == 0, $"重生后体干没清零：{respawn.Posture.Current}");
+
+        // ── 击杀 → 魄火 → 自动吸魂 ──
+        // 03 §6.1：魄不是掉在地上的道具，是"从尸体里飞出来、自己飞向笼手的东西"。
+        int soulsBefore = player.Gauntlet.SoulCount;
+        respawn.Health.Apply(respawn.Health.Max + 1);
+        respawn.Die();
+        Check(respawn.IsDead, "第二次击杀失败");
+
+        bool sawOrb = await WaitForSoulAbsorb(player, soulsBefore, 180);
+
+        GD.Print($"[冒烟] 吸魂：魄 {soulsBefore} → {player.Gauntlet.SoulCount}，连吸 {player.Gauntlet.ChainCount}，侵蚀 {player.Gauntlet.Erosion}");
+
+        Check(sawOrb, "击杀后没有生成魄火（ActorDefeated 事件或 SoulOrb 生成链断了）");
+        Check(player.Gauntlet.SoulCount > soulsBefore, "魄火没有被自动吸进笼手（自动牵引失败）");
+        Check(player.Gauntlet.Erosion == 0, $"普通自动牵引不该涨侵蚀，现在涨到了 {player.Gauntlet.Erosion}（03 §6.6 的核心分界）");
+
+        // ── 「深吸」：唯一会推进侵蚀的行为 ──
+        await WaitPhysicsFrames(respawn.RespawnDelayFrames + 15);
+        Check(!respawn.IsDead, "第三次击杀前假人还没复活");
+
+        int deepBefore = player.Gauntlet.DeepAbsorbCount;
+        int erosionBefore = player.Gauntlet.Erosion;
+
+        Input.ActionPress("interact");
+        await WaitPhysicsFrames(3);
+        Check(player.Gauntlet.IsDeepAbsorbing, "按住交互键没有进入「深吸」");
+
+        respawn.Health.Apply(respawn.Health.Max + 1);
+        respawn.Die();
+        await WaitForSoulAbsorb(player, player.Gauntlet.SoulCount, 180);
+        Input.ActionRelease("interact");
+
+        GD.Print($"[冒烟] 深吸：次数 {deepBefore} → {player.Gauntlet.DeepAbsorbCount}，侵蚀 {erosionBefore} → {player.Gauntlet.Erosion}，阶段 {player.Gauntlet.Stage}");
+
+        Check(player.Gauntlet.DeepAbsorbCount > deepBefore, "「深吸」期间吸到的魄没有被记成深吸");
+        Check(player.Gauntlet.Erosion > erosionBefore, "「深吸」没有推进侵蚀（03 §6.6：这是唯一该涨侵蚀的行为）");
 
         Report();
     }
@@ -171,6 +208,25 @@ public partial class CombatSmokeTest : Node3D
     {
         for (int i = 0; i < frames; i++)
             await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
+    }
+
+    /// <summary>等魄火生成并被吸进笼手；返回这期间是否看见过魄火。</summary>
+    private async System.Threading.Tasks.Task<bool> WaitForSoulAbsorb(PlayerActor player, int soulsBefore, int maxFrames)
+    {
+        bool sawOrb = false;
+
+        for (int i = 0; i < maxFrames; i++)
+        {
+            await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
+
+            if (GetTree().GetNodesInGroup("soul_orb").Count > 0)
+                sawOrb = true;
+
+            if (player.Gauntlet.SoulCount > soulsBefore)
+                break;
+        }
+
+        return sawOrb;
     }
 
     private void Check(bool condition, string message)

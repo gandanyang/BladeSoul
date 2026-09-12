@@ -3,7 +3,9 @@ using Godot;
 using Oniblade.Combat;
 using Oniblade.Combat.Data;
 using Oniblade.Combat.States;
+using Oniblade.Core;
 using Oniblade.Dev;
+using Oniblade.Progression;
 
 namespace Oniblade.Player;
 
@@ -34,6 +36,9 @@ public partial class PlayerActor : CombatActor, IGuardInput
 	/// <summary>玩家不会被一闪秒杀（01 文档：任何机制都不该一击终结玩家）。</summary>
 	public override EnemyTier IssenTier => EnemyTier.Boss;
 
+	/// <summary>玩家不掉魄——掉的是魔骸的魄（03 §6.1）。</summary>
+	public override bool DropsSoulOnDeath => false;
+
 	private Node3D _cameraPivot = null!;
 	private SpringArm3D _springArm = null!;
 	private BlockoutRig _rig = null!;
@@ -46,6 +51,9 @@ public partial class PlayerActor : CombatActor, IGuardInput
 	private int _lastGuardReleaseFrame = -1;
 
 	private bool _guardHeldLastFrame;
+
+	/// <summary>噬魂笼手：自动牵引魄、连吸反馈、深吸、侵蚀记账。</summary>
+	public OniGauntlet Gauntlet { get; private set; } = null!;
 
 	public int InputBufferFrames => Difficulty?.InputBufferFrames ?? 8;
 
@@ -90,6 +98,12 @@ public partial class PlayerActor : CombatActor, IGuardInput
 		AddChild(_rig);
 
 		PrimaryHitbox = GetNodeOrNull<Hitbox>("Hitbox");
+
+		// 笼手挂在玩家身上，吸附点就是玩家位置。
+		Gauntlet = new OniGauntlet { Name = "OniGauntlet" };
+		AddChild(Gauntlet);
+		if (EventBus.Instance is { } bus)
+			Gauntlet.Attach(bus);
 
 		if (Attacks is not null)
 			Machine.Get<AttackState>().Configure(Attacks.BuildLightCombo());
@@ -152,6 +166,9 @@ public partial class PlayerActor : CombatActor, IGuardInput
 		if (_guardHeldLastFrame && !guardHeld)
 			_lastGuardReleaseFrame = _localFrame;
 		_guardHeldLastFrame = guardHeld;
+
+		// 「深吸」：按住交互键强行吸魄，代价是侵蚀（03 §6.1）。
+		Gauntlet.SetDeepAbsorbing(Input.IsActionPressed("interact"));
 
 		if (Input.IsActionJustPressed("attack"))
 			_buffer.Push(PlayerAction.Attack);
@@ -229,10 +246,18 @@ public partial class PlayerActor : CombatActor, IGuardInput
 	private static bool IsAttackCancelWindowOpen(AttackState attack) =>
 		attack.Sequence.IsRunning && attack.Sequence.Current.CanCancelAt(attack.Sequence.Frame);
 
-	public override bool ConsumeAttackInput() => _buffer.Consume(PlayerAction.Attack, InputBufferFrames);
+	public override bool ConsumeAttackInput()
+		=> !Gauntlet.IsDeepAbsorbing && _buffer.Consume(PlayerAction.Attack, InputBufferFrames);
 
 	public override bool TryGetMoveIntent(out MoveIntent intent)
 	{
+		// 深吸期间无法移动——这是它的代价（03 §6.1）。
+		if (Gauntlet.IsDeepAbsorbing)
+		{
+			intent = default;
+			return false;
+		}
+
 		Vector2 raw = Input.GetVector("move_left", "move_right", "move_back", "move_forward");
 
 		Vector3 forward = -_cameraPivot.GlobalTransform.Basis.Z;

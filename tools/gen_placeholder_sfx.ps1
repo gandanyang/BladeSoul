@@ -260,6 +260,19 @@ function Build-Perilous {
     return $b
 }
 
+# Soul absorb: a dark "pulled in" tone. Pitch is raised by code per chain
+# count, so this file only provides the base note.
+function Build-SoulAbsorb {
+    $b = New-Buffer 0.40
+    $rng = New-Object System.Random 301
+    Add-Noise -Buf $b -Amp 0.30 -Decay 12.0 -Rng $rng -LowPass 0.35 -Attack 0.004
+    Add-Partial -Buf $b -Freq 330 -Amp 0.55 -Decay 8.0
+    Add-Partial -Buf $b -Freq 495 -Amp 0.30 -Decay 10.0
+    Add-Partial -Buf $b -Freq 742 -Amp 0.16 -Decay 14.0
+    Limit-Peak $b 0.72
+    return $b
+}
+
 $sounds = [ordered]@{
     'hit_slash'       = (Build-HitSlash)
     'hit_block'       = (Build-HitBlock)
@@ -275,6 +288,7 @@ $sounds = [ordered]@{
     'perilous_thrust' = (Build-Perilous -BaseFreq 1560 -Seed 201)
     'perilous_sweep'  = (Build-Perilous -BaseFreq 980  -Seed 202)
     'perilous_grab'   = (Build-Perilous -BaseFreq 620  -Seed 203)
+    'soul_absorb'     = (Build-SoulAbsorb)
 }
 
 $total = 0

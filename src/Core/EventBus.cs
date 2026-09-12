@@ -22,6 +22,9 @@ public partial class EventBus : Node
     public event Action<DeflectChainEvent>? DeflectChainChanged;
     public event Action<SoulGainedEvent>? SoulGained;
 
+    /// <summary>有人被打倒（带位置与档次）。魄火靠它生成。</summary>
+    public event Action<ActorDefeatedEvent>? ActorDefeated;
+
     /// <summary>难度档切换（HUD 与 AI 都要重新读参数）。</summary>
     public event Action<string>? DifficultyChanged;
 
@@ -46,6 +49,8 @@ public partial class EventBus : Node
     public void RaiseDeflectChain(in DeflectChainEvent e) => DeflectChainChanged?.Invoke(e);
 
     public void RaiseSoulGained(in SoulGainedEvent e) => SoulGained?.Invoke(e);
+
+    public void RaiseActorDefeated(in ActorDefeatedEvent e) => ActorDefeated?.Invoke(e);
 
     public void RaiseDifficultyChanged(string difficultyId) => DifficultyChanged?.Invoke(difficultyId);
 }

@@ -20,4 +20,7 @@ public enum CombatSfx
     PerilousThrust,
     PerilousSweep,
     PerilousGrab,
+
+    /// <summary>吸魄：音高随连吸数递增（03 §6.1）。</summary>
+    SoulAbsorb,
 }

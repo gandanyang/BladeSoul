@@ -61,6 +61,9 @@ public abstract partial class CombatActor : CharacterBody3D, ICombatActorDebug, 
 	/// <summary>被一闪时按哪个档次结算收益。玩家覆盖成 Boss（永不被一闪秒杀）。</summary>
 	public virtual EnemyTier IssenTier => Stats?.Tier ?? EnemyTier.Grunt;
 
+	/// <summary>死后是否掉落魄。玩家不掉（03 §6.1 说的是魔骸的魄）。</summary>
+	public virtual bool DropsSoulOnDeath => true;
+
 	// ── 状态机每帧写这些，基类负责变成物理 ──────────────────────
 	public Vector3 DesiredVelocity { get; set; }
 	public float DesiredYaw { get; set; }
@@ -358,6 +361,17 @@ public abstract partial class CombatActor : CharacterBody3D, ICombatActorDebug, 
 		IsDead = true;
 		Machine.Get<StaggerState>().Duration = 0;
 		PrimaryHitbox?.SetActive(false);
+
+		if (DropsSoulOnDeath)
+		{
+			EventBus.Instance?.RaiseActorDefeated(new ActorDefeatedEvent
+			{
+				ActorId = ActorId,
+				Position = GlobalPosition,
+				Tier = IssenTier,
+			});
+		}
+
 		OnDeath();
 	}
 

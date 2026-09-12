@@ -1,3 +1,4 @@
+using Godot;
 using Oniblade.Combat;
 using Oniblade.Combat.Data;
 using Oniblade.Progression;
@@ -40,4 +41,18 @@ public readonly struct SoulGainedEvent
 {
     public SoulType Type { get; init; }
     public int Amount { get; init; }
+}
+
+/// <summary>
+/// 一个战斗单位被打倒。比 <c>ActorDied(int)</c> 多带**位置与档次**——
+/// 因为"魄从尸体里飞出来"这件事必须知道尸体在哪、以及它值多少（03 §6.1）。
+/// </summary>
+public readonly struct ActorDefeatedEvent
+{
+    public int ActorId { get; init; }
+    public Vector3 Position { get; init; }
+    public EnemyTier Tier { get; init; }
+
+    /// <summary>击杀者；暂时不用（想写战斗统计时再填）。</summary>
+    public int KillerActorId { get; init; }
 }
