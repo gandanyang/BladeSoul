@@ -39,10 +39,15 @@ public partial class AttackData : Resource
     /// <summary>「危」：格挡与弹开都无效，只能闪避/看破。</summary>
     [Export] public bool Unblockable { get; set; }
 
-    /// <summary>可被弹开。</summary>
+    /// <summary>
+    /// 可被弹开。**「危」攻击必须为 false**（02 §3 裁定），自检会强制检查。
+    /// </summary>
     [Export] public bool Parryable { get; set; } = true;
 
-    /// <summary>可被一闪。</summary>
+    /// <summary>
+    /// 可被一闪。**一闪可以应对一切攻击**，所以敌方招式默认都是 true；
+    /// 这条只留给"确实要让某个大招免疫一闪"的例外，且要写进 02 文档。
+    /// </summary>
     [Export] public bool IssenVulnerable { get; set; } = true;
 
     /// <summary>突刺：可被看破（识破）。</summary>

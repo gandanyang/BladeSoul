@@ -158,9 +158,13 @@ public partial class SelfTest : Node
         if (attack.Perilous && attack.StartupFrames < 20)
             _errors.Add($"{path} 危攻击前摇 {attack.StartupFrames} 帧太短，无法反应");
 
-        // 「危」里只有突刺允许被弹开（看破），横扫/抓取必须闪避。
-        if (attack.Perilous && attack.Parryable && attack.PerilousKind != PerilousKind.Thrust)
-            _errors.Add($"{path} 该危攻击标记为可弹开，但只有「危·突刺」才允许");
+        // 02 §3 裁定：**弹开只对一般攻击有效，「危」一律不可弹开**。
+        if (attack.Perilous && attack.Parryable)
+            _errors.Add($"{path} 是「危」攻击却标记为可弹开（02 §3：弹开只对一般攻击有效）");
+
+        // 02 §3 裁定：**一闪可以应对一切攻击**，所以敌方招式都该可被一闪。
+        if (path.Contains("/enemies/") && !attack.IssenVulnerable)
+            _errors.Add($"{path} 敌方招式标记为不可一闪（02 §3：一闪可以应对一切攻击）");
 
         if (attack.Unblockable && attack.Parryable)
             _errors.Add($"{path} Unblockable 与 Parryable 同时为真，规则会自相矛盾");

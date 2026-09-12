@@ -116,6 +116,26 @@ public class CombatResolverTests
         Assert.Equal(12, r.GrantIssenFrames);
     }
 
+    [Fact]
+    public void Rule2_Issen_Works_On_Perilous_Unblockable_Attacks()
+    {
+        // 02 §3 裁定：一闪可以应对一切攻击，包括格挡和弹开都无效的「危」。
+        var atk = Attacker(traits: AttackTraits.Perilous, issenVulnerable: true);
+        var def = Defender(issen: IssenKind.Shin);
+
+        Assert.Equal(Verdict.Issen, CombatResolver.Resolve(atk, def).Verdict);
+    }
+
+    [Fact]
+    public void Rule2_Issen_Beats_The_Unblockable_Rule()
+    {
+        // 对照：同样的一招，没有一闪 buff 时连格挡都无效，直接命中。
+        var atk = Attacker(traits: AttackTraits.Perilous);
+        var def = Defender(guarding: true, guardAngleDeg: 0);
+
+        Assert.Equal(Verdict.Hit, CombatResolver.Resolve(atk, def).Verdict);
+    }
+
     // ── 规则 3：拼刀 ─────────────────────────────────────────────
 
     [Fact]

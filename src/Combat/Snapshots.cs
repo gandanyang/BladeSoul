@@ -15,7 +15,10 @@ public readonly struct AttackTraits
     /// <summary>「危」：格挡与弹开都无效，只能闪避/看破。</summary>
     public bool Unblockable { get; init; }
 
-    /// <summary>可被弹开。</summary>
+    /// <summary>
+    /// 可被弹开。**只对一般攻击为真**——
+    /// 「危」攻击一律不可弹开（02 §3 裁定：一闪应对一切，弹开只应对一般攻击）。
+    /// </summary>
     public bool Parryable { get; init; }
 
     /// <summary>普通斩击的默认属性：可格挡、可弹开。</summary>
