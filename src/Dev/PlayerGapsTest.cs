@@ -35,6 +35,13 @@ public partial class PlayerGapsTest : Node3D
     /// <summary>掉出平台后观察多少帧（180 帧 = 3 秒，足够掉出很远）。</summary>
     [Export] public int FallFrames { get; set; } = 180;
 
+    /// <summary>
+    /// 允许低于阈值的余量（米）。**不能设成 0**：确认窗口（12 帧）＋ 淡出（15 帧）
+    /// 这段时间玩家还在往下掉，实测大约再掉 6~7 米。余量的作用是
+    /// "抓住'根本没重置'（那样会掉到 -41 米）"，而不是要求毫秒级反应。
+    /// </summary>
+    [Export] public float FallMargin { get; set; } = 14f;
+
     /// <summary>每个动作采样多少帧（取逐帧与 idle 的最大差，避免"采错时机"）。</summary>
     [Export] public int PoseFrames { get; set; } = 40;
 
@@ -44,8 +51,27 @@ public partial class PlayerGapsTest : Node3D
     private Node3D? _player;
     private Vector3 _spawn;
     private float _lowestY;
-    private bool _everReset;
     private int _frame;
+    private int _failures;
+    private FallGuard? _guard;
+    private int _recoveriesAtPhaseStart;
+    private float _profileThresholdY = -6f;
+    private int _profileConfirmFrames = 12;
+    private Phase _phase = Phase.ControlOnPlatform;
+    private int _phaseFrame;
+
+    private enum Phase
+    {
+        /// <summary>对照组 A：正常站在平台上，一次都不该重置。</summary>
+        ControlOnPlatform,
+
+        /// <summary>对照组 B：站在边缘内侧 0.5m，同样不该重置（防误触发）。</summary>
+        ControlNearEdge,
+
+        /// <summary>正式：挪到平台外，该被送回安全点。</summary>
+        FallOff,
+        Done,
+    }
 
     public override void _Ready()
     {
@@ -72,11 +98,24 @@ public partial class PlayerGapsTest : Node3D
         _spawn = _player.GlobalPosition;
         _lowestY = _spawn.Y;
 
-        // 挪到平台外：Z 方向最远 8（+ 廊下到 12），40 一定在外面。
-        _player.GlobalPosition = _spawn + new Vector3(0f, 2f, TeleportAwayZ);
+        // 阈值直接从玩家身上那份**资源**读——这样体检断的就是真实生效的参数，
+        // 而不是测试里另抄一份（抄一份的话，改了 .tres 测试还"通过"）。
+        _guard = _player.GetNodeOrNull<FallGuard>("FallGuard");
+        if (_guard?.Profile is { } profile)
+        {
+            _profileThresholdY = profile.ThresholdY;
+            _profileConfirmFrames = profile.ConfirmFrames;
+        }
+        else
+        {
+            GD.PrintErr("[缺口] 玩家身上没有 FallGuard 或其 Profile——掉落保护没挂上");
+            _failures++;
+        }
 
         GD.Print("");
-        GD.Print($"[缺口] 落下平台：把玩家从 {Fmt(_spawn)} 挪到 {Fmt(_player.GlobalPosition)}，观察 {FallFrames} 帧");
+        GD.Print($"[缺口] 落下平台：安全点（出生点）{Fmt(_spawn)}，每组观察 {FallFrames} 帧");
+        GD.Print($"[缺口]   阈值 {_profileThresholdY:F1}m ＋ 连续 {_profileConfirmFrames} 帧确认，"
+                 + $"允许再低 {FallMargin:F0}m（确认窗与淡出期间还在掉）");
     }
 
     public override void _PhysicsProcess(double delta)
@@ -84,29 +123,105 @@ public partial class PlayerGapsTest : Node3D
         if (_player is null)
             return;
 
-        _frame++;
-        Vector3 p = _player.GlobalPosition;
-        _lowestY = Mathf.Min(_lowestY, p.Y);
+        switch (_phase)
+        {
+            case Phase.ControlOnPlatform:
+                StepPhase(
+                    "对照组 A（站在平台上）",
+                    () => { },
+                    () => Assert(_guard!.RecoveryCount - _recoveriesAtPhaseStart == 0,
+                        "全程一次都没重置",
+                        "正常站着却被送回去了——会误伤正常游玩"));
+                return;
 
-        // "重置"的判据：回到出生点附近（1m 内）——现在项目里没有任何逻辑做这件事，
-        // 所以这里预期**永远是 false**。一旦有人加了越界重置，这一行就会变 true。
-        if (p.DistanceTo(_spawn) < 1f)
-            _everReset = true;
+            case Phase.ControlNearEdge:
+                StepPhase(
+                    "对照组 B（站在边缘内侧 0.5m）",
+                    // 道场地板 Z 到 8，站到 7.5 就是"贴着边但还在上面"。
+                    () => _player.GlobalPosition = new Vector3(_spawn.X, _spawn.Y, 7.5f),
+                    () => Assert(_guard!.RecoveryCount - _recoveriesAtPhaseStart == 0,
+                        "贴着边站着也没重置",
+                        "贴着边就触发重置——阈值或余量太紧"));
+                return;
 
-        if (_frame % 60 == 0)
-            GD.Print($"[缺口]   第 {_frame,3} 帧：Y = {p.Y,10:F2}（起点 {_spawn.Y:F2}）");
+            case Phase.FallOff:
+                StepPhase(
+                    "正式（挪到平台外）",
+                    () => _player.GlobalPosition = _spawn + new Vector3(0f, 2f, TeleportAwayZ),
+                    AssertFallRecovered);
+                return;
 
-        if (_frame < FallFrames)
+            default:
+                return;
+        }
+    }
+
+    /// <summary>跑完一个阶段：<paramref name="setup"/> 只在第一帧执行，<paramref name="verify"/> 在最后一帧执行。</summary>
+    private void StepPhase(string name, System.Action setup, System.Action verify)
+    {
+        if (_phaseFrame == 0)
+        {
+            _lowestY = _player!.GlobalPosition.Y;
+            _recoveriesAtPhaseStart = _guard?.RecoveryCount ?? 0;
+            setup();
+            GD.Print($"[缺口] ▶ {name}");
+        }
+
+        _phaseFrame++;
+        _lowestY = Mathf.Min(_lowestY, _player!.GlobalPosition.Y);
+
+        if (_phaseFrame < FallFrames)
             return;
 
-        Vector3 final = _player.GlobalPosition;
-        GD.Print($"[缺口]   结束：Y = {final.Y:F2}，最低 Y = {_lowestY:F2}，"
-                 + $"总下落 {_spawn.Y - _lowestY:F2}m");
-        GD.Print($"[缺口]   → 越界重置：{(_everReset ? "有" : "**没有**")}"
-                 + (_everReset ? "" : "　← 掉下去就再也回不来了，这是确认的缺口"));
+        verify();
+        _phaseFrame = 0;
+        _phase = _phase switch
+        {
+            Phase.ControlOnPlatform => Phase.ControlNearEdge,
+            Phase.ControlNearEdge => Phase.FallOff,
+            _ => Phase.Done,
+        };
+
+        if (_phase != Phase.Done)
+            return;
+
         GD.Print("");
-        GD.Print("[缺口] 体检完成（退出码 0 只代表跑完了，不代表缺口已修）");
-        GetTree().Quit(0);
+        GD.Print(_failures == 0
+            ? "[缺口] ✓ 掉落保护全部通过"
+            : $"[缺口] ✗ {_failures} 条没过（见上面）");
+        GD.Print("[缺口] 体检完成");
+        GetTree().Quit(_failures == 0 ? 0 : 1);
+    }
+
+    private void AssertFallRecovered()
+    {
+        float minAllowed = _profileThresholdY - FallMargin;
+        int recoveries = (_guard?.RecoveryCount ?? 0) - _recoveriesAtPhaseStart;
+
+        Assert(recoveries >= 1, "掉出去以后被送回了安全点",
+            "一次都没送回来——这就是要修的缺口 T45");
+        Assert(_lowestY >= minAllowed,
+            "下坠深度在允许范围内",
+            $"掉到了 {_lowestY:F2}m，低于允许下限 {minAllowed:F2}m——确认窗口或淡出太久");
+        Assert(_player is not null && _player.GlobalPosition.DistanceTo(_spawn) < 1f,
+            "最终位置就在安全点（1m 内）",
+            $"最终停在 {Fmt(_player!.GlobalPosition)}，安全点是 {Fmt(_spawn)}");
+
+        GD.Print($"[缺口]   最低 Y = {_lowestY:F2}（允许下限 {minAllowed:F2}），"
+                 + $"送回 {recoveries} 次，最终 {Fmt(_player!.GlobalPosition)}");
+    }
+
+    /// <summary><paramref name="what"/> 是要断言的事实（正面表述）；<paramref name="detail"/> 失败时才打印。</summary>
+    private void Assert(bool ok, string what, string detail = "")
+    {
+        if (ok)
+        {
+            GD.Print($"[缺口]   ✓ {what}");
+            return;
+        }
+
+        _failures++;
+        GD.PrintErr($"[缺口]   ✗ {what}　—— {detail}");
     }
 
     // ── 动画覆盖 ────────────────────────────────────────────────────────

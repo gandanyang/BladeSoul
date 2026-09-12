@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="FallRecoveryProfile" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/World/FallRecoveryProfile.cs" id="1_fall"]
+
+[resource]
+script = ExtResource("1_fall")
+ThresholdY = -6.0
+ConfirmFrames = 12
+MaxHorizontalDistance = 200.0
+FadeOutFrames = 15
+FadeInFrames = 24
+FadeColor = Color(0, 0, 0, 1)

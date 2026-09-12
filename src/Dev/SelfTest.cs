@@ -25,6 +25,9 @@ public partial class SelfTest : Node
 
     private int _materials;
 
+    /// <summary>玩家侧的关卡外参数（T45 掉落保护）。</summary>
+    private int _playerData;
+
     public override void _Ready()
     {
         Scan("res://data");
@@ -33,7 +36,7 @@ public partial class SelfTest : Node
         foreach (string error in _errors)
             GD.PrintErr($"[自检] ✗ {error}");
 
-        GD.Print($"[自检] 资源 {_resources} 个（招式 {_attacks} / 难度 {_difficulties} / 角色数据 {_actorData} / 氛围 {_world} / 材质 {_materials}），音效 {_audio} 个，错误 {_errors.Count} 项");
+        GD.Print($"[自检] 资源 {_resources} 个（招式 {_attacks} / 难度 {_difficulties} / 角色数据 {_actorData} / 氛围 {_world} / 材质 {_materials} / 玩家 {_playerData}），音效 {_audio} 个，错误 {_errors.Count} 项");
 
         if (_errors.Count == 0)
             GD.Print("[自检] ✓ 通过");
@@ -163,6 +166,18 @@ public partial class SelfTest : Node
                 return;
 
             _errors.Add($"{path} 不是 Material（实际 {resource.GetType().Name}）");
+            return;
+        }
+
+        // data/player/ 下是玩家侧、与关卡无关的参数（T45 掉落保护）。
+        // 和 /world/ 分开的理由：氛围是**场景**的，掉落阈值是**人**的。
+        if (path.Contains("/player/"))
+        {
+            _playerData++;
+            if (resource is Oniblade.World.FallRecoveryProfile)
+                return;
+
+            _errors.Add($"{path} 不是 FallRecoveryProfile（实际 {resource.GetType().Name}）");
             return;
         }
 
