@@ -63,6 +63,9 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 	/// <summary>死亡后到原地重开的剩余帧数（T14）。0 = 没在等重开。</summary>
 	private int _restartCountdownFrames;
 
+	/// <summary>复活无敌帧的倒计时（T22）：起身演出 + 演出后的一段，都算无敌。</summary>
+	private int _reviveInvulnerableFramesLeft;
+
 	/// <summary>上一次松开防御的帧号；从未松过为 -1。</summary>
 	private int _lastGuardReleaseFrame = -1;
 
@@ -123,6 +126,7 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 
 		// 带满次数进场（BOSS 战前 / 死亡重开后由 T14 调 RefillHealCharges）。
 		RefillHealCharges();
+		RefillRevives();
 
 		if (Attacks is not null)
 			Machine.Get<AttackState>().Configure(Attacks.BuildLightCombo());
@@ -143,6 +147,7 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 		machine.Add(new DodgeState());
 		machine.Add(new HealState());
 		machine.Add(new IssenState());
+		machine.Add(new ReviveState());
 	}
 
 	/// <summary>防御键是否按住（<see cref="IGuardInput"/>）。敌人不实现它，所以不受防御状态影响。</summary>
@@ -183,6 +188,11 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 		SyncCameraRig();
 		_localFrame++;
 		_buffer.Tick();
+
+		// 复活无敌帧在这里递减：它要跨过 ReviveState 的边界继续生效，
+		// 所以不能挂在状态里（状态退出时就会一起消失）。
+		if (_reviveInvulnerableFramesLeft > 0)
+			_reviveInvulnerableFramesLeft--;
 
 		// 记录"松开防御"的那一帧，供快速重按判定使用。
 		bool guardHeld = Input.IsActionPressed("guard");
@@ -274,6 +284,10 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 			case IssenState:
 				return;
 
+			// 复活起身整段不可取消（T22）：防御也不行，你正在从地上爬起来。
+			case ReviveState:
+				return;
+
 			default:
 				source = GuardEntrySource.Neutral;
 				break;
@@ -334,7 +348,6 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 		DodgeState dodge = Machine.Get<DodgeState>();
 		dodge.InvulnerableFrames = Difficulty?.DodgeIFrames ?? 0;
 		dodge.RecoveryFrames = Difficulty?.DodgeRecoveryFrames ?? 0;
-		dodge.PerfectDodgeGraceFrames = Difficulty?.PerfectDodgeGraceFrames ?? 0;
 		dodge.Speed = MoveSpeed * DodgeSpeedScale;
 		dodge.Direction = ResolveDodgeDirection();
 
@@ -356,6 +369,7 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 	/// <summary>无敌帧（02 §4 规则 1：裁决器直接给 Miss，连一闪都打不中）。</summary>
 	public override bool IsInvulnerableNow =>
 		base.IsInvulnerableNow
+		|| _reviveInvulnerableFramesLeft > 0
 		|| (Machine is { Current: DodgeState dodge } && dodge.IsInvulnerableNow);
 
 	/// <summary>本场战斗成功躲开的攻击次数（完美闪避的证据，T13 端到端测试断言它）。</summary>
@@ -431,10 +445,69 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 	// ── 死亡与原地重开（T14 / 01 §0 规则 1）─────────────────────
 
 	/// <summary>
-	/// 死亡只做一件事：起一个倒计时。**真正的复位交给 <see cref="BattleReset"/>**——
-	/// 因为"原地重开"必须同时复位敌人，玩家自己去干这件事会越权。
+	/// 死亡分两条路（T22 + T14）：
+	/// 还有复活次数 → **当场站起来**；次数用尽 → 交给 <see cref="BattleReset"/> 原地重开。
+	/// 两条都不掉持久资源（01 §0 规则 1）。
 	/// </summary>
-	protected override void OnDeath() => _restartCountdownFrames = Stats?.DeathRestartDelayFrames ?? 0;
+	protected override void OnDeath()
+	{
+		if (RevivesLeft > 0)
+		{
+			RevivesLeft--;
+			EnterRevive();
+			return;
+		}
+
+		_restartCountdownFrames = Stats?.DeathRestartDelayFrames ?? 0;
+	}
+
+	// ── 复活（T22）──────────────────────────────────────────────
+
+	/// <summary>还剩几次复活。用尽之后死亡会走 T14 的原地重开。</summary>
+	public int RevivesLeft { get; private set; }
+
+	/// <summary>
+	/// 补满复活次数。次数来自**难度档**（05 §2 的难度表：修罗 1 / 武士 1 / 剑客 2 / 見習 3），
+	/// 所以它是"可及性杠杆"而不是写死的常量。
+	/// 进场与重开后各调一次（01 §0 规则 1：死亡没有持久性惩罚）。
+	/// </summary>
+	public void RefillRevives() => RevivesLeft = Difficulty?.ReviveCount ?? 0;
+
+	/// <summary>
+	/// 当场站起来（T22）。
+	///
+	/// ⚠️ 必须把 <c>IsDead</c> 置回 false：<see cref="CombatActor"/>._PhysicsProcess 在
+	/// <c>IsDead</c> 时会**直接 return**，状态机根本不会推进——不置回去的话
+	/// 玩家会永久躺在地上，看起来像卡死。
+	/// （<c>IsDead</c> 是 <c>protected set</c>，只有派生类能写，所以这件事只能在 PlayerActor 里做。）
+	///
+	/// 这条路径由 <see cref="OnDeath"/> 调用，而 OnDeath 是 <c>Die()</c> 的最后一句，
+	/// 所以 <c>Die()</c> 返回时 IsDead 已经变回 false 了。
+	/// </summary>
+	private void EnterRevive()
+	{
+		IsDead = false;
+
+		// 血量回满：复活的意义是"再来一次"，只留一丝血会让它变成折磨。
+		Health.Heal(Health.Max);
+		Posture.Reset();
+
+		int performance = Mathf.Max(1, Stats?.RevivePerformanceFrames ?? 0);
+		int settle = Mathf.Max(0, Stats?.ReviveInvulnerableFrames ?? 0);
+
+		// 无敌覆盖"演出 + 演出之后"，否则刚站起来就会被同一套连招带走，
+		// 复活次数等于白给，玩家只会觉得被耍了。
+		_reviveInvulnerableFramesLeft = performance + settle;
+
+		ReviveState revive = Machine.Get<ReviveState>();
+		revive.DurationFrames = performance;
+
+		// 演出：灰盒期先复用一次大幅度的受击反馈（"倒下去再撑起来"），
+		// 专门的起身姿势属于动画管线（T24/T25）。
+		_rig.PlayHitReact(2f);
+
+		Machine.ForceChange<ReviveState>();
+	}
 
 	/// <summary>
 	/// 倒计时必须在**基类跑完之后**自己做：<see cref="CombatActor"/> 在 <c>IsDead</c> 时
@@ -469,8 +542,267 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 		Gauntlet.SetDeepAbsorbing(false);
 
 		RefillHealCharges();
+		RefillRevives();
 
 		base.ResetForBattle();
+	}
+
+	// ── 一闪（T20 / 02 §2.3·§3·§4）──────────────────────────────
+
+	/// <summary>慢镜倍率（02 §7：0.25）。</summary>
+	public const float IssenSlowMoScale = 0.25f;
+
+	/// <summary>慢镜恢复所需的**真实**秒数（02 §7：0.3s）。</summary>
+	public const double IssenSlowMoRestoreSeconds = 0.3;
+
+	/// <summary>连锁一闪的上限（02 §2.3：最多 3 连）。</summary>
+	public const int MaxChainIssen = 3;
+
+	/// <summary>连锁一闪授予的 buff 时长（帧）。02 §4：一闪命中后 12 帧内可再按。</summary>
+	public const int ChainIssenBuffFrames = 12;
+
+	/// <summary>连锁一闪的搜索半径（米）。02 §2.3：≤8m 内最近的敌人。</summary>
+	private const float ChainIssenRange = 8f;
+
+	/// <summary>连锁一闪落地时与目标保持的距离（米），避免直接站进它身体里。</summary>
+	private const float ChainIssenStandoff = 1.2f;
+
+	private Tween? _issenSlowMo;
+
+	/// <summary>
+	/// 慢镜触发过几次（T20 端到端测试用）。
+	///
+	/// 为什么需要它：<c>Engine.TimeScale</c> 只会在按下那一瞬间等于 0.25，
+	/// 而恢复 Tween 在两次物理帧之间就已经开始推进了，外部逐帧采样**永远采不到 0.25 本身**。
+	/// 所以"降下去了"这件事由这个计数器证明，"确实生效了"由采样到的低位值证明，两条一起才完整。
+	/// </summary>
+	public int IssenSlowMoCount { get; private set; }
+
+	/// <summary>本次按键被解释成了什么（端到端测试与调试面板用）。</summary>
+	public IssenIntent LastIssenIntent { get; private set; } = IssenIntent.NotAnAttempt;
+
+	/// <summary>已经授予过多少次真一闪 buff（结算前的授予次数，测试用）。</summary>
+	public int ShinIssenGrants { get; private set; }
+
+	private int _chainIssenCount;
+
+	/// <summary>
+	/// 这一次攻击键按下去，算不算一闪。
+	/// 返回 true = 已消费（一闪 / 安全窗 / 落空），false = 放行走普通攻击。
+	/// </summary>
+	private bool TryIssen()
+	{
+		// 连锁一闪：手里还有 Chain buff 时按攻击是**主动追击**，不需要敌人先出招。
+		if (IssenBuffFramesLeft > 0 && IssenBuff == IssenKind.Chain)
+			return TryChainIssen();
+
+		// 连锁窗口已经过去了 → 计数归零（下一次一闪重新从第 1 连算起）。
+		_chainIssenCount = 0;
+
+		if (!FindThreat(out ThreatPhase phase, out int framesUntilActive))
+		{
+			LastIssenIntent = IssenIntent.NotAnAttempt;
+			return false;
+		}
+
+		// 窗口宽度只能由 CombatTuning 合成（08 §3 P1-3 红线：不许直接读难度档字段）。
+		int windowFrames = CombatTuning.ResolveIssenWindowFrames(Difficulty?.IssenWindowFrames ?? 0);
+		int safeFrames = Difficulty?.IssenSafeWindowFrames ?? 0;
+
+		IssenIntent intent = IssenWindow.Evaluate(phase, framesUntilActive, windowFrames, safeFrames);
+		LastIssenIntent = intent;
+
+		switch (intent)
+		{
+			case IssenIntent.Issen:
+				// 02 §4：**输入时捕获意图**——把结果记成 buff，
+				// 真正的伤害等敌人的刀落下来那一帧由裁决器规则 2 结算。
+				GrantIssen(IssenKind.Shin, IssenWindow.BuffFramesFor(framesUntilActive));
+				ShinIssenGrants++;
+				EnterIssen(IssenState.ResolveDurationFrames, guardInstead: false, playSlash: false);
+				PlayIssenSlowMo();
+				return true;
+
+			case IssenIntent.SafeGuard:
+				// ★ 按早了：不算一闪，但自动转格挡姿态 —— **不挨打**。
+				// 时长取"到敌人命中那一帧 + 2"，所以那一刀落下时玩家还在格挡里。
+				EnterIssen(framesUntilActive + 2, guardInstead: true, playSlash: false);
+				return true;
+
+			default:
+				// 太早 / 太晚 → 落空，30 帧无防御硬直（有代价，但不是即死）。
+				// 落空也要挥出那一刀，玩家才知道"我刚才按了、但没对"。
+				EnterIssen(IssenState.WhiffDurationFrames, guardInstead: false, playSlash: true);
+				return true;
+		}
+	}
+
+	/// <summary>
+	/// 附近有没有敌人正在挥刀。有的话给出它的相位与"距离判定帧还有几帧"。
+	///
+	/// 同时挑**最近**的那一个：多个敌人一起挥刀时，一闪应该照顾眼前这个。
+	/// </summary>
+	private bool FindThreat(out ThreatPhase phase, out int framesUntilActive)
+	{
+		phase = ThreatPhase.None;
+		framesUntilActive = 0;
+
+		float best = float.MaxValue;
+
+		foreach (Node node in GetTree().GetNodesInGroup("combat_actor"))
+		{
+			if (node == this || node is not CombatActor other || other.IsDead)
+				continue;
+
+			if (other.Machine.Current is not AttackState attack || !attack.Sequence.IsRunning)
+				continue;
+
+			Vector3 delta = other.GlobalPosition - GlobalPosition;
+			delta.Y = 0f;
+
+			float distanceSquared = delta.LengthSquared();
+			if (distanceSquared > IssenScanRange * IssenScanRange)
+				continue;
+
+			int frame = attack.Sequence.Frame;
+			AttackTiming timing = attack.Sequence.Current;
+
+			ThreatPhase candidate =
+				frame < timing.ActiveStart ? ThreatPhase.Windup
+				: frame < timing.ActiveEnd ? ThreatPhase.Active
+				: ThreatPhase.Recovery;
+
+			// 收招段不算威胁：02 §10 要求"敌人连段结束后必定有 ≥20 帧空隙给玩家反打"，
+			// 那个空隙里按攻击必须是普通攻击，不能变成"落空吃 30 帧"。
+			if (candidate == ThreatPhase.Recovery)
+				continue;
+
+			if (distanceSquared >= best)
+				continue;
+
+			best = distanceSquared;
+			phase = candidate;
+			framesUntilActive = timing.ActiveStart - frame;
+		}
+
+		return phase != ThreatPhase.None;
+	}
+
+	/// <summary>
+	/// 连锁一闪（02 §2.3 / T20 规则 7）：一闪命中后 12 帧内再按攻击 →
+	/// 瞬移到 ≤8m 内最近的敌人重复一次一闪，上限 3 连。
+	///
+	/// 它和真一闪最大的区别是**没有来招可弹**——所以走不了裁决器规则 2（那条需要有攻方）。
+	/// 这里由玩家侧主动选出目标，再套用同一张 <see cref="IssenTable"/> 的收益，
+	/// 保证"一闪的收益只有一处定义"。
+	/// </summary>
+	private bool TryChainIssen()
+	{
+		if (_chainIssenCount >= MaxChainIssen)
+			return false;
+
+		if (!FindChainTarget(out CombatActor target))
+			return false;
+
+		_chainIssenCount++;
+
+		// 用掉这一次 Chain buff（下次要重新挣）。
+		IssenBuff = IssenKind.None;
+		IssenBuffFramesLeft = 0;
+
+		// 瞬移到目标近旁，站在它原来朝向玩家的那一侧，避免穿过它的身体。
+		Vector3 approach = GlobalPosition - target.GlobalPosition;
+		approach.Y = 0f;
+		approach = approach.LengthSquared() > 0.0001f ? approach.Normalized() : Vector3.Back;
+		GlobalPosition = target.GlobalPosition + approach * ChainIssenStandoff;
+
+		IssenEffect effect = IssenTable.For(IssenKind.Chain, target.IssenTier);
+
+		if (effect.InstantKill)
+		{
+			target.Health.Apply(target.Health.Max);
+			target.Die();
+		}
+		else
+		{
+			target.ApplyPosturePercent(effect.PostureDamagePercent);
+
+			if (effect.StunFrames > 0)
+			{
+				target.Machine.Get<StaggerState>().Duration = effect.StunFrames;
+				target.Machine.Change<StaggerState>();
+			}
+		}
+
+		// 还没到上限 → 再发一次 Chain buff，让下一刀可以继续连。
+		if (_chainIssenCount < MaxChainIssen)
+			GrantIssen(IssenKind.Chain, ChainIssenBuffFrames);
+
+		EnterIssen(IssenState.ResolveDurationFrames, guardInstead: false, playSlash: true);
+		PlayIssenSlowMo();
+		return true;
+	}
+
+	private bool FindChainTarget(out CombatActor target)
+	{
+		target = null!;
+
+		float best = ChainIssenRange * ChainIssenRange;
+
+		foreach (Node node in GetTree().GetNodesInGroup("combat_actor"))
+		{
+			if (node == this || node is not CombatActor other || other.IsDead)
+				continue;
+
+			Vector3 delta = other.GlobalPosition - GlobalPosition;
+			float distanceSquared = delta.X * delta.X + delta.Z * delta.Z;
+
+			if (distanceSquared >= best)
+				continue;
+
+			best = distanceSquared;
+			target = other;
+		}
+
+		return target is not null;
+	}
+
+	private void EnterIssen(int durationFrames, bool guardInstead, bool playSlash)
+	{
+		IssenState state = Machine.Get<IssenState>();
+		state.DurationFrames = Mathf.Max(1, durationFrames);
+		state.GuardInstead = guardInstead;
+
+		if (playSlash)
+			_rig.PlayIssen();
+
+		// 用 ForceChange：一闪必须能打断当前动作（02 §3 裁定：一闪应对一切攻击）。
+		Machine.ForceChange<IssenState>();
+	}
+
+	/// <summary>
+	/// 一闪慢镜（02 §7：<c>TimeScale = 0.25</c>，0.3 秒平滑恢复）。
+	///
+	/// ⚠️ **必须 <c>SetIgnoreTimeScale(true)</c>**：Tween 默认吃 <c>Engine.TimeScale</c>，
+	/// 于是"0.3 秒恢复"会被慢镜自己压慢 4 倍、变成 1.2 秒；玩家连续一闪时
+	/// 时间就再也爬不回 1.0——"慢镜卡住不恢复"是这类实现最常见的 bug
+	/// （T20 卡片点名要求断言 TimeScale 确实回到了 1.0）。
+	/// </summary>
+	private void PlayIssenSlowMo()
+	{
+		_issenSlowMo?.Kill();
+
+		IssenSlowMoCount++;
+		Engine.TimeScale = IssenSlowMoScale;
+
+		_issenSlowMo = CreateTween();
+		_issenSlowMo.SetIgnoreTimeScale(true);
+		_issenSlowMo.TweenMethod(
+			Callable.From<double>(value => Engine.TimeScale = (float)value),
+			(double)IssenSlowMoScale,
+			1.0,
+			IssenSlowMoRestoreSeconds);
+		_issenSlowMo.TweenCallback(Callable.From(() => Engine.TimeScale = 1.0));
 	}
 
 	/// <summary>
@@ -546,5 +878,12 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 
 		if (result.Verdict is Combat.Verdict.Block or Combat.Verdict.Deflect or Combat.Verdict.Clash)
 			_rig.PlayHitReact(0.5f);
+
+		// 一闪结算成功 → 现在才播那一刀（T20）。
+		// 放在结算时机而不是按键时机：真一闪从按下到生效隔着 0~N 帧，
+		// 那几帧正是"刀还没落下来"的紧张感，提前播会把节奏拆坏。
+		// 这条也是**弹一闪**（弹开 → buff → 敌人下一刀被一闪）唯一能播到动画的地方。
+		if (result.Verdict == Combat.Verdict.Issen)
+			_rig.PlayIssen();
 	}
 }

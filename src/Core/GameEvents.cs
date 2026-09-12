@@ -27,6 +27,22 @@ public readonly struct HitEvent
 
     /// <summary>防御方是否因本次结算死亡/被忍杀。</summary>
     public bool Killed { get; init; }
+
+    /// <summary>
+    /// 接触点（世界坐标，取防御方受击框的位置，约在胸口）。
+    ///
+    /// T28 加的：特效层（火花 / 血雾）必须知道"打在哪里"，
+    /// 而在那之前事件里只有 id，位置无从得知——每个消费者都得自己去反查场景树。
+    /// 与 <see cref="ActorDefeatedEvent.Position"/> 同一个理由：
+    /// **消费者需要什么，事件就带上什么**。
+    /// </summary>
+    public Vector3 Position { get; init; }
+
+    /// <summary>
+    /// 这一刀的来向（攻方 → 防御方，水平方向，已归一化）。
+    /// 血雾要"顺着刀路"而不是原地爆开（10 §4），所以方向是必须的。
+    /// </summary>
+    public Vector3 Direction { get; init; }
 }
 
 /// <summary>弹开连击数变化（音频用它做音高递增）。<see cref="Chain"/> 为 0 表示断连。</summary>

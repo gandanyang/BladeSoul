@@ -128,7 +128,7 @@ public partial class AudioDirector : Node
                 break;
 
             case Verdict.Issen:
-                PlayCombat(CombatSfx.IssenSlash);
+                PlayIssenSequence();
                 ResetDeflectChain();
                 break;
 
@@ -142,6 +142,39 @@ public partial class AudioDirector : Node
                 break;
         }
     }
+
+    /// <summary>切割声与低频轰鸣之间的间隔（秒）。02 §7 给的是 0.2 秒。</summary>
+    private const double IssenImpactDelaySeconds = 0.2;
+
+    /// <summary>
+    /// 一闪的音效序列（02 §7）："先 0.2 秒静音（世界抽真空）→ 切割声 → 低频轰鸣"。
+    ///
+    /// 严格照做做不到：事件是在**结算那一刻**才发出来的，没法倒回去先静音。
+    /// 所以折中成"切割声立刻响、低频轰鸣在 0.2 秒后砸下来"，而"抽真空"那一下
+    /// 交给玩家侧的慢镜（<c>TimeScale = 0.25</c>）承担——世界确实被抽慢了，
+    /// 听感上就是这一击从战场里被单独拎出来。
+    ///
+    /// 两个音频文件在 T3 就已经生成好了，这里**只做接线**（T20 卡片明确要求不要重做音频）。
+    /// </summary>
+    private async void PlayIssenSequence()
+    {
+        IssenSequenceCount++;
+        PlayCombat(CombatSfx.IssenSlash);
+
+        SceneTree? tree = GetTree();
+        if (tree is null)
+            return;
+
+        await ToSignal(tree.CreateTimer(IssenImpactDelaySeconds), SceneTreeTimer.SignalName.Timeout);
+
+        PlayCombat(CombatSfx.IssenImpact);
+    }
+
+    /// <summary>
+    /// 闪过几次一闪（端到端测试靠它直接断言"Yes，音效路径真的被走到了"，
+    /// 而不必去猜音频有没有出声）。T20。
+    /// </summary>
+    public int IssenSequenceCount { get; private set; }
 
     private AudioStream? Resolve(CombatSfx sfx)
     {

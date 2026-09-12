@@ -144,7 +144,7 @@ public partial class DodgeTrainingTest : Node3D
             return "（玩家没有配难度档，退化到 0 帧无敌）";
 
         return $"{difficulty.DisplayName}：无敌 {difficulty.DodgeIFrames} 帧 / " +
-               $"后摇 {difficulty.DodgeRecoveryFrames} 帧 / 宽容 {difficulty.PerfectDodgeGraceFrames} 帧";
+               $"后摇 {difficulty.DodgeRecoveryFrames} 帧";
     }
 
     /// <summary>假人还有几帧进入判定帧（没在出招时返回一个很大的值）。</summary>

@@ -105,16 +105,37 @@ public partial class BattleResetTest : Node3D
         Check(attackerMoved,
             $"挥砍假人一步都没动（距原位 {_attacker.GlobalPosition.DistanceTo(_attackerSpawn):0.###} m）：位置复位断言无效");
 
+        // ── 阶段 2：先把复活次数耗光，再杀死玩家，逐帧数到"回到可控" ──
+        //
+        // T22 之后"死亡"会**先走复活**（当场站起来，不触发重开），
+        // 而 T14 的重开协议只在复活次数用尽后才接管。
+        // 所以这里必须先把次数耗光才能测到真正的重开路径——
+        // 耗光的过程本身也在测"复活确实会消耗次数"。
+        int exhaustGuard = 0;
+        while (_player.RevivesLeft > 0 && exhaustGuard++ < 8)
+        {
+            _player.Health.Apply(_player.Health.Max);
+            _player.Die();
+            await WaitForRecovery();
+        }
+
+        Check(_player.RevivesLeft == 0,
+            $"复活次数没有耗尽（还剩 {_player.RevivesLeft}）：下面的重开断言测不到东西");
+
         // 打死重生假人，让它卡在"死亡等待"里——这正是 T14 规则 4 说的那个坑。
+        //
+        // ⚠️ 必须放在**耗光复活之后**：它的重生延迟只有 120 帧，
+        // 而耗尽复活要花 90 帧 × N。放在前面的话，等我们真要测量时
+        // 它已经自己活过来了，这条断言就永远测不到东西（而且会假装通过）。
+        //
         // 注意：Health.Apply 只改数字，**不会触发 Die()**（那只发生在 ReceiveVerdict 里），
-        // 所以这里必须显式调 Die()，否则假人只是血量归零、并没有进入死亡等待。
+        // 所以这里必须显式调 Die()。
         _respawnDummy.Health.Apply(_respawnDummy.Health.Max);
         _respawnDummy.Die();
 
         Check(_respawnDummy.IsDead, "重生假人没有被打死，复位断言无效");
         Check(_respawnDummy.IsWaitingToRespawn, "重生假人没有进入死亡等待状态，复位断言无效");
 
-        // ── 阶段 2：杀死玩家，逐帧数到"回到可控" ────────────────
         _deathFrame = (int)Engine.GetPhysicsFrames();
         _player.Die();
 
@@ -145,6 +166,18 @@ public partial class BattleResetTest : Node3D
         // ── 阶段 3：断言 + 真的能动能走 ─────────────────────────
         await ProbeMovement();
         Report();
+    }
+
+    /// <summary>等到玩家回到可控（复活演出或重开都算），最多等 MaxRestartFrames + 60 帧。</summary>
+    private async Task WaitForRecovery()
+    {
+        for (int frame = 0; frame < MaxRestartFrames + 60; frame++)
+        {
+            await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
+
+            if (!_player.IsDead && _player.Machine.Current is IdleState)
+                return;
+        }
     }
 
     /// <summary>重开后按 move_right，必须真的走起来（"回到可控"的定义）。</summary>

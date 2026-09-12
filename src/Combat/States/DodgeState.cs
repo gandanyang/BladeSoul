@@ -42,9 +42,6 @@ public sealed class DodgeState : ActorState
 	/// <summary>切入前由输入侧写入：后摇帧数（<c>Difficulty.DodgeRecoveryFrames</c>）。</summary>
 	public int RecoveryFrames { get; set; }
 
-	/// <summary>切入前由输入侧写入：完美闪避宽容帧数（<c>Difficulty.PerfectDodgeGraceFrames</c>）。</summary>
-	public int PerfectDodgeGraceFrames { get; set; }
-
 	/// <summary>切入前由输入侧写入：闪避速度（米/秒，已含难度/属性加成）。</summary>
 	public float Speed { get; set; }
 
@@ -71,7 +68,7 @@ public sealed class DodgeState : ActorState
 
 		_direction = Direction;
 		_speed = Speed;
-		_window.Begin(InvulnerableFrames, PerfectDodgeGraceFrames, RecoveryFrames);
+		_window.Begin(InvulnerableFrames, RecoveryFrames);
 		PerfectDodgeGranted = false;
 
 		// 用掉就复位（理由同 GuardState）：下次忘了写参数时宁可退化成"原地闪"，
@@ -95,12 +92,15 @@ public sealed class DodgeState : ActorState
 	/// 完美闪避：无敌帧内**实际躲开了一次攻击**（裁决器返回 <c>Miss</c>）。
 	///
 	/// 由 <c>PlayerActor.OnAttackEvaded</c>（<see cref="IAttackEvasionListener"/>）转发进来。
+	/// 判定窗就是无敌帧本身——<c>Miss</c> 只可能发生在无敌帧里，
+	/// 所以"完美闪避"与"无敌"天然是同一个窗口（T21 删掉了那个冗余的宽容参数）。
+	///
 	/// 一次闪避只发一次——假人的一刀有 4 个判定帧，不挡住会连发 4 次、
 	/// 把 buff 时长刷成 14 帧的整数倍，玩家就能靠"站着不动挨着躲"白嫖时长。
 	/// </summary>
 	public void OnAttackEvaded()
 	{
-		if (PerfectDodgeGranted || !_window.IsInPerfectDodgeWindow)
+		if (PerfectDodgeGranted || !_window.IsInvulnerable)
 			return;
 
 		PerfectDodgeGranted = true;

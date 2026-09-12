@@ -15,7 +15,6 @@ InputBufferFrames = 12
 DodgeBufferFrames = 14
 DodgeIFrames = 14
 DodgeRecoveryFrames = 12
-PerfectDodgeGraceFrames = 6
 CoyoteFrames = 6
 EnemyStartupBonus = 8
 EnemyHealthScale = 0.75

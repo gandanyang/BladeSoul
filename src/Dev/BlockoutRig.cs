@@ -19,10 +19,17 @@ public partial class BlockoutRig : Node3D
 	private Node3D _body = null!;
 	private float _locomotionPhase;
 	private float _attackElapsed = -1f;
+	private float _issenElapsed = -1f;
 	private float _hitReactElapsed = -1f;
 	private float _hitReactStrength;
 	private const float AttackDuration = 0.5f;
 	private const float HitReactDuration = 0.22f;
+
+	/// <summary>一闪斜斩本身的时长（秒）。比普通攻击短得多——快到你来不及看清。</summary>
+	private const float IssenSlashDuration = 0.16f;
+
+	/// <summary>斩完之后的**收势停顿**（秒）。一闪的味道全在这个停顿上。</summary>
+	private const float IssenHoldDuration = 0.30f;
 
 	public void Build(Color primary, Color accent, bool weapon)
 	{
@@ -59,7 +66,7 @@ public partial class BlockoutRig : Node3D
 		LegLeft.Rotation = new Vector3(swing * 0.8f, 0f, 0f);
 		LegRight.Rotation = new Vector3(-swing * 0.8f, 0f, 0f);
 
-		if (_attackElapsed < 0f)
+		if (_attackElapsed < 0f && _issenElapsed < 0f)
 		{
 			ArmLeft.Rotation = new Vector3(-swing * 0.5f, 0f, -0.1f);
 			ArmRight.Rotation = new Vector3(swing * 0.5f, 0f, 0.1f);
@@ -73,6 +80,12 @@ public partial class BlockoutRig : Node3D
 	{
 		_attackElapsed = 0f;
 	}
+
+	/// <summary>
+	/// 一闪的动作（T20）：**快速斜斩 + 收势停顿**。灰盒期不新建模型，只改姿势。
+	/// 它与普通攻击的区别全在节奏上——斩得极快，然后定格，像"比谁都慢了一拍"。
+	/// </summary>
+	public void PlayIssen() => _issenElapsed = 0f;
 
 	/// <summary>
 	/// 受击反馈：后仰 + 抖动。灰盒阶段唯一能让人"感觉到打中了"的东西，
@@ -108,7 +121,12 @@ public partial class BlockoutRig : Node3D
 		}
 
 		if (_attackElapsed < 0f)
-			return;
+		{
+			AnimateIssen(delta);
+
+			if (_issenElapsed < 0f)
+				return;
+		}
 
 		_attackElapsed += delta;
 		float t = Mathf.Clamp(_attackElapsed / AttackDuration, 0f, 1f);
@@ -119,6 +137,49 @@ public partial class BlockoutRig : Node3D
 
 		if (t >= 1f)
 			_attackElapsed = -1f;
+	}
+
+	/// <summary>
+	/// 一闪的姿势（T20）：0 ~ <see cref="IssenSlashDuration"/> 走一次极快的右上→左下斜斩，
+	/// 之后 <see cref="IssenHoldDuration"/> 定格在收势上，只把身体慢慢转回正面。
+	///
+	/// 刻意用 smoothstep 而不是缓出：斜斩那一下要"一次到位"，
+	/// 缓出会拖出"用力挥砍"的感觉，而一闪是**不用力**的——这一点和 03 文档里
+	/// "玄斎为不用力而死"是同一个意象。
+	/// </summary>
+	private void AnimateIssen(float delta)
+	{
+		if (_issenElapsed < 0f)
+			return;
+
+		_issenElapsed += delta;
+		float total = IssenSlashDuration + IssenHoldDuration;
+
+		if (_issenElapsed >= total)
+		{
+			_issenElapsed = -1f;
+			return;
+		}
+
+		if (_issenElapsed < IssenSlashDuration)
+		{
+			float t = _issenElapsed / IssenSlashDuration;
+			float eased = t * t * (3f - 2f * t);
+
+			ArmRight.Rotation = new Vector3(
+				Mathf.Lerp(-2.6f, 0.9f, eased), 0f, Mathf.Lerp(0.9f, -0.7f, eased));
+			ArmLeft.Rotation = new Vector3(
+				Mathf.Lerp(0.3f, -0.9f, eased), 0f, Mathf.Lerp(-0.2f, 0.5f, eased));
+			_body.Rotation = new Vector3(0f, Mathf.Lerp(0f, 0.35f, eased), 0f);
+			return;
+		}
+
+		// 收势停顿：姿势定住，只有身体缓缓转回正面（"收刀"）。
+		float holdT = Mathf.Clamp((_issenElapsed - IssenSlashDuration) / IssenHoldDuration, 0f, 1f);
+
+		ArmRight.Rotation = new Vector3(0.9f, 0f, -0.7f);
+		ArmLeft.Rotation = new Vector3(-0.9f, 0f, 0.5f);
+		_body.Rotation = new Vector3(0f, 0.35f * (1f - holdT), 0f);
 	}
 
 	private float _headPivotLean;

@@ -87,7 +87,8 @@ Get-ChildItem -Recurse src -File | Sort LastWriteTime -Desc | Select -First 5
 | `_PhysicsProcess` 在 `IsDead` 时早退 | 死亡之后的逻辑永远不跑 | 覆写 `_PhysicsProcess`，先调 `base` 再自己数帧 |
 | **`ActorId` 手工分配** | **撞号后静默**破坏"同帧结果可复现"（已撞两次） | 新单位检查 id 唯一性 |
 | 新资产没有 `.import` | `ResourceLoader.Exists` 返回 false，资源"不存在" | 跑 `godot --headless --path . --import` |
-| **`.ps1` 里写中文** | PowerShell 5.1 按 ANSI 读，直接语法错 | **工具脚本一律纯 ASCII** |
+| **`.ps1` 没带 UTF-8 BOM** | PS 5.1 按 ANSI 读 → 中文变乱码，甚至**语法错**（生成器脚本栽过一次） | **文件必须带 BOM**：`[IO.File]::WriteAllText($p,$t,(New-Object Text.UTF8Encoding $true))`；新脚本建议纯 ASCII |
+| **另一个 agent 正在写文件时构建** | 报一些**根本不存在**的编译错误（撞在两次写盘之间） | **重跑一次再下结论**，别急着报 bug |
 | `project.godot` 里的注释 | 编辑器保存时会被清掉 | 权威内容写进 `docs/00` |
 | 端到端测试等太久 | `check.ps1` 变慢 | 测试里缩短等待参数，**不许改机制** |
 | 覆写虚方法忘了 `base` | 静默丢掉基类行为（如「危」预警） | 覆写时先想"基类有没有做事" |

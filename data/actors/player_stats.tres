@@ -21,4 +21,6 @@ HealDrinkFrames = 34
 HealRecoveryFrames = 10
 HealPercent = 0.4
 DeathRestartDelayFrames = 60
+RevivePerformanceFrames = 90
+ReviveInvulnerableFrames = 30
 Tier = 2

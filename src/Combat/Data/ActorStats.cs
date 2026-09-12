@@ -52,6 +52,16 @@ public partial class ActorStats : Resource
     /// </summary>
     [Export] public int DeathRestartDelayFrames { get; set; } = 60;
 
+    [ExportGroup("复活")]
+    /// <summary>起身演出的帧数（T22 / 卡片：约 1.5 秒）。</summary>
+    [Export] public int RevivePerformanceFrames { get; set; } = 90;
+
+    /// <summary>
+    /// 起身演出**结束后**额外给的无敌帧数。
+    /// 不给的话"刚站起来就被同一套连招带走"——复活次数会被白白吃掉，玩家只会觉得被耍了。
+    /// </summary>
+    [Export] public int ReviveInvulnerableFrames { get; set; } = 30;
+
     [ExportGroup("档次")]
     [Export] public EnemyTier Tier { get; set; } = EnemyTier.Grunt;
 }

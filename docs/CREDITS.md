@@ -18,7 +18,20 @@
 
 ## 模型 / 动画 / 贴图 / 环境
 
-暂无外部资产。当前所有可见内容都是**程序化灰盒**（`src/Dev/BlockoutRig.cs`），
+| 资产 | 来源 | 授权 | 用途 | 状态 |
+|---|---|---|---|---|
+| `assets/models/model_player_congyun_01.glb` | **AI 生成**：TapTap Maker `create_3d_asset`（Tripo 后端）文本→四视图审核→模型→自动绑骨；asset `e933654bd1064c068d7ce28709d9586b`，2026-09-12 | AI 生成内容，本项目自有，可自由使用 | 主角「丛云」静态模型（几何 + 法线 + UV0 + 内嵌贴图），依赖 03 §2.5 造型设定 | **静态版，无骨架**；绑骨/重定向待 Blender → Mixamo |
+
+> 该 GLB 由 Maker 产出的 UrhoX `.mdl`（UMD2）经自写导出器转换而来
+> （临时脚本 `%TEMP%\opencode\mdl2glb.py`，复用了 TapMaker `mdl-voxelize` 技能的只读解析器）。
+> 官方 `convert` 不支持 MDL 源、本机无 Blender，故只能导出**静态几何**——骨架数据不在此通道内。
+>
+> 两个已知导出细节，接入时注意：
+> 1. **比例**：模型被归一化到高度 ≈ 1.0 单位，需缩放约 **1.75×** 才是设定身高（≈175cm）。
+> 2. **手系**：UrhoX 为左手系，导出时按惯例做了 `Z 取反 + 翻转绕序`；若在 Godot 中看起来左右镜像，
+>    用 `--no-flip` 重导一次即可。
+
+其余可见内容仍是**程序化灰盒**（`src/Dev/BlockoutRig.cs`），
 或 Godot 内置的 `BoxMesh` / `CapsuleShape3D` / `PlaneMesh`。
 
 ## 字体 / 音频库

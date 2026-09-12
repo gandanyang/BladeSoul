@@ -11,15 +11,20 @@ namespace Oniblade.Tests;
 /// 所以这些测试同时验证"状态层的帧号"和"裁决器规则 1"能对上——
 /// 单看任一边都发现不了"无敌帧差一帧"这种错。
 ///
-/// 四档难度用的是 <c>data/difficulty/*.tres</c> 里的**真实数值**，不是编出来的。
+/// 帧数用 <c>data/difficulty/*.tres</c> 里的**真实值**。
+///
+/// T21 之后这里只有**一个**窗口概念：无敌帧本身。
+/// 原先那个"完美闪避宽容帧数"已删除——无敌帧之后不再产生 <c>Miss</c>，
+/// 而完美闪避只能由 <c>Miss</c> 触发，所以那个参数永远不可能生效（02 §8 的裁定）。
+/// 下面的 <see cref="Invulnerability_Ends_Exactly_At_DodgeIFrames"/> 把这条钉住了。
 /// </summary>
 public class DodgeStateTests
 {
     // ── 与 data/difficulty/*.tres 一致 ──────────────────────────
-    private const int AsuraIFrames = 7, AsuraRecovery = 20, AsuraGrace = 2;
-    private const int SamuraiIFrames = 8, SamuraiRecovery = 18, SamuraiGrace = 3;
-    private const int KenshiIFrames = 10, KenshiRecovery = 15, KenshiGrace = 4;
-    private const int MigotoIFrames = 14, MigotoRecovery = 12, MigotoGrace = 6;
+    private const int AsuraIFrames = 7, AsuraRecovery = 20;
+    private const int SamuraiIFrames = 8, SamuraiRecovery = 18;
+    private const int KenshiIFrames = 10, KenshiRecovery = 15;
+    private const int MigotoIFrames = 14, MigotoRecovery = 12;
 
     /// <summary>
     /// 复刻 <c>DodgeState</c> + <c>DodgeWindow</c> 的时序（纯逻辑版）。
@@ -32,14 +37,12 @@ public class DodgeStateTests
 
         public int FramesSinceStart => _window.FramesSinceStart;
         public bool IsInvulnerable => _window.IsInvulnerable;
-        public bool IsInPerfectDodgeWindow => _window.IsInPerfectDodgeWindow;
         public bool IsInRecovery => _window.IsInRecovery;
         public bool IsFinished => _window.IsFinished;
         public int TotalFrames => _window.TotalFrames;
 
         /// <summary>玩家按下闪避那一帧（对应 DodgeState.Enter → DodgeWindow.Begin）。</summary>
-        public void Enter(int iFrames, int grace, int recovery) =>
-            _window.Begin(iFrames, grace, recovery);
+        public void Enter(int iFrames, int recovery) => _window.Begin(iFrames, recovery);
 
         /// <summary>过一帧（对应 DodgeState.Tick → DodgeWindow.Advance）。</summary>
         public void Step() => _window.Advance();
@@ -71,14 +74,14 @@ public class DodgeStateTests
     // ── 规则 2：无敌帧数严格等于难度档给的值 ────────────────────
 
     [Theory]
-    [InlineData(AsuraIFrames, AsuraGrace, AsuraRecovery)]
-    [InlineData(SamuraiIFrames, SamuraiGrace, SamuraiRecovery)]
-    [InlineData(KenshiIFrames, KenshiGrace, KenshiRecovery)]
-    [InlineData(MigotoIFrames, MigotoGrace, MigotoRecovery)]
-    public void Invulnerable_For_Exactly_The_Profiles_DodgeIFrames(int iFrames, int grace, int recovery)
+    [InlineData(AsuraIFrames, AsuraRecovery)]
+    [InlineData(SamuraiIFrames, SamuraiRecovery)]
+    [InlineData(KenshiIFrames, KenshiRecovery)]
+    [InlineData(MigotoIFrames, MigotoRecovery)]
+    public void Invulnerable_For_Exactly_The_Profiles_DodgeIFrames(int iFrames, int recovery)
     {
         var dodge = new DodgeSimulator();
-        dodge.Enter(iFrames, grace, recovery);
+        dodge.Enter(iFrames, recovery);
 
         // 第 0 帧（按下闪避那一帧）就已经无敌——刀落下的同一帧按闪避必须算躲开。
         for (int frame = 0; frame < iFrames; frame++)
@@ -103,49 +106,34 @@ public class DodgeStateTests
     {
         // 02 §4：规则 1（无敌）排在规则 2（一闪）之前——闪避连一闪都躲得掉。
         var dodge = new DodgeSimulator();
-        dodge.Enter(SamuraiIFrames, SamuraiGrace, SamuraiRecovery);
+        dodge.Enter(SamuraiIFrames, SamuraiRecovery);
 
         Assert.Equal(
             Verdict.Miss,
             CombatResolver.Resolve(GruntSlash(), DefenderOf(dodge, IssenKind.Shin)).Verdict);
     }
 
-    // ── 规则 6：完美闪避宽容 ────────────────────────────────────
+    // ── T21：无敌帧就是完美闪避窗，没有第二个窗口 ───────────────
 
     [Fact]
-    public void Perfect_Dodge_Window_Covers_The_Invulnerable_Frames_Plus_Grace()
+    public void Invulnerability_Ends_Exactly_At_DodgeIFrames()
     {
+        // 这条取代了原来的 `Grace_Frames_Do_Not_Extend_Invulnerability`。
+        //
+        // T21 的裁定：无敌帧之后**不再产生 Miss**，所以"完美闪避"的判定窗
+        // 不可能比无敌帧更宽——多出来的那几帧没有任何事件可接，是死配置。
+        // 这里把"严格等于 DodgeIFrames"钉死：多一帧都会让这条测试红。
         var dodge = new DodgeSimulator();
-        dodge.Enter(SamuraiIFrames, SamuraiGrace, SamuraiRecovery);
+        dodge.Enter(SamuraiIFrames, SamuraiRecovery);
 
-        for (int frame = 0; frame < SamuraiIFrames + SamuraiGrace; frame++)
+        for (int frame = 0; frame < SamuraiIFrames; frame++)
         {
-            Assert.True(dodge.IsInPerfectDodgeWindow);
+            Assert.True(dodge.IsInvulnerable);
             dodge.Step();
         }
 
-        Assert.False(dodge.IsInPerfectDodgeWindow);
-    }
-
-    [Fact]
-    public void Grace_Frames_Do_Not_Extend_Invulnerability()
-    {
-        // ⚠️ 规格歧义（已写进完成报告，等制作人裁定）：
-        // 02 §8 说"无敌帧结束后 3 帧内仍算完美闪避"，
-        // 但 T13 验收 #2 要求"第 DodgeIFrames 帧之后 → 正常结算"。
-        // 两条不能同时成立：无敌帧之后不再产生 Miss，而完美闪避只能由 Miss 触发。
-        //
-        // 本实现按验收 #2 执行（无敌严格 = DodgeIFrames），
-        // 因此宽容帧当前只放宽**判定窗**、不放宽**无敌**，是惰性的。
-        // 这个测试把当前语义钉住，裁定后再改。
-        var dodge = new DodgeSimulator();
-        dodge.Enter(SamuraiIFrames, SamuraiGrace, SamuraiRecovery);
-
-        for (int frame = 0; frame < SamuraiIFrames; frame++)
-            dodge.Step();
-
+        // 第 DodgeIFrames 帧：刚好出界，一刀不少地挨上。
         Assert.False(dodge.IsInvulnerable);
-        Assert.True(dodge.IsInPerfectDodgeWindow);
         Assert.Equal(Verdict.Hit, CombatResolver.Resolve(GruntSlash(), DefenderOf(dodge)).Verdict);
     }
 
@@ -155,7 +143,7 @@ public class DodgeStateTests
     public void Total_Frames_Is_Invulnerable_Plus_Recovery()
     {
         var dodge = new DodgeSimulator();
-        dodge.Enter(SamuraiIFrames, SamuraiGrace, SamuraiRecovery);
+        dodge.Enter(SamuraiIFrames, SamuraiRecovery);
 
         Assert.Equal(SamuraiIFrames + SamuraiRecovery, dodge.TotalFrames);
 
@@ -172,7 +160,7 @@ public class DodgeStateTests
     public void Recovery_Starts_Right_After_The_Last_Invulnerable_Frame()
     {
         var dodge = new DodgeSimulator();
-        dodge.Enter(SamuraiIFrames, SamuraiGrace, SamuraiRecovery);
+        dodge.Enter(SamuraiIFrames, SamuraiRecovery);
 
         for (int frame = 0; frame < SamuraiIFrames - 1; frame++)
         {
@@ -195,7 +183,7 @@ public class DodgeStateTests
         // 缺难度档时输入侧会写 0 → 不该凭空变强
         // （与 GuardState 退化到"最窄的可玩窗口"同一个立场）。
         var dodge = new DodgeSimulator();
-        dodge.Enter(0, 0, SamuraiRecovery);
+        dodge.Enter(0, SamuraiRecovery);
 
         Assert.False(dodge.IsInvulnerable);
         Assert.Equal(Verdict.Hit, CombatResolver.Resolve(GruntSlash(), DefenderOf(dodge)).Verdict);

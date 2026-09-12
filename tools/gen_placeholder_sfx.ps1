@@ -1,4 +1,4 @@
-#!/usr/bin/env pwsh
+﻿#!/usr/bin/env pwsh
 # Generates the 14 placeholder combat SFX as 16-bit mono 44.1kHz WAV files.
 # Fully procedural and reproducible: same seed -> same bytes.
 #

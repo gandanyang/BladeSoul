@@ -40,8 +40,9 @@ public partial class DifficultyProfile : Resource
     [Export] public int DodgeIFrames { get; set; } = 8;
     [Export] public int DodgeRecoveryFrames { get; set; } = 18;
 
-    /// <summary>完美闪避宽容：无敌帧结束后多少帧内仍算完美闪避。</summary>
-    [Export] public int PerfectDodgeGraceFrames { get; set; } = 3;
+    // T21 删除了一个"完美闪避宽容帧数"参数：02 §8 那条规则物理上不成立
+    // （无敌帧之后不再产生 Miss，而完美闪避只能由 Miss 触发）。
+    // 真正在做宽容的是上面的 DodgeBufferFrames（输入缓冲）。
 
     /// <summary>离开地面后的宽容帧数。</summary>
     [Export] public int CoyoteFrames { get; set; } = 4;

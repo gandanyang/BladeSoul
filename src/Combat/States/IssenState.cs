@@ -52,10 +52,14 @@ public sealed class IssenState : ActorState
 	}
 
 	/// <summary>
-	/// 不可取消：只放行回 <see cref="IdleState"/>。
-	/// 别写成 <c>=> false</c>——那会把状态自己的退出也一起挡掉，角色会永久卡在闪后摇里。
+	/// 不可取消：只放行回 <see cref="IdleState"/>（状态自己的正常退出）
+	/// 与 <see cref="StaggerState"/>（**挨打仍然会被打断**）。
+	///
+	/// 别写成 <c>=> false</c>，那会把状态自己的退出也一起挡掉，角色会永久卡在闪后摇里。
+	/// 也别把 StaggerState 一起挡住："不可取消"指的是**玩家不能自己取消**，
+	/// 不是"这段时间免硬直"——挨了刀照样要后仰。
 	/// </summary>
-	public override bool CanTransitionTo(ActorState next) => next is IdleState;
+	public override bool CanTransitionTo(ActorState next) => next is IdleState or StaggerState;
 
 	public override void Tick()
 	{

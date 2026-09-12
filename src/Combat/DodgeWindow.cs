@@ -22,9 +22,6 @@ public sealed class DodgeWindow
 	/// <summary>难度档给的无敌帧数（武士 8）。这是**宣传口径**的无敌长度。</summary>
 	public int InvulnerableFrames { get; private set; }
 
-	/// <summary>完美闪避宽容帧数（02 §8：无敌帧结束后 3 帧内仍算完美闪避）。</summary>
-	public int PerfectDodgeGraceFrames { get; private set; }
-
 	/// <summary>后摇帧数（武士 18），可被防御取消。</summary>
 	public int RecoveryFrames { get; private set; }
 
@@ -34,10 +31,9 @@ public sealed class DodgeWindow
 	/// <summary>整段闪避的总帧数 = 无敌帧 + 后摇。</summary>
 	public int TotalFrames => InvulnerableFrames + RecoveryFrames;
 
-	public void Begin(int invulnerableFrames, int perfectDodgeGraceFrames, int recoveryFrames)
+	public void Begin(int invulnerableFrames, int recoveryFrames)
 	{
 		InvulnerableFrames = Math.Max(0, invulnerableFrames);
-		PerfectDodgeGraceFrames = Math.Max(0, perfectDodgeGraceFrames);
 		RecoveryFrames = Math.Max(0, recoveryFrames);
 		_framesSinceStart = 0;
 	}
@@ -45,20 +41,17 @@ public sealed class DodgeWindow
 	/// <summary>
 	/// 本帧判定（在 <see cref="Advance"/> **之前**读）：处于无敌帧。
 	/// 为真时裁决器规则 1 直接返回 <c>Miss</c>——**连一闪都打不中**（02 §4）。
+	///
+	/// 它同时也是"完美闪避"的判定窗：完美闪避只能由 <c>Miss</c> 触发，
+	/// 而 <c>Miss</c> 只可能发生在无敌帧里，所以两者**天然是同一个窗口**。
+	///
+	/// ⚠️ 这里曾经还有一个独立的"完美闪避宽容帧数"参数。T21 删了它：
+	/// 那条规则**物理上不成立**——无敌帧之后不再产生 <c>Miss</c>，
+	/// 判定窗再宽也没有事件可接（裁定与理由见 02 §8）。
+	/// 一个不生效的旋钮比没有旋钮更危险，它会让后来的人以为宽容是它给的。
+	/// 真正在做宽容的是 <c>DodgeBufferFrames</c>（输入缓冲）。
 	/// </summary>
 	public bool IsInvulnerable => _framesSinceStart < InvulnerableFrames;
-
-	/// <summary>
-	/// 本帧判定（在 <see cref="Advance"/> **之前**读）：这一帧躲开攻击算不算"完美闪避"。
-	///
-	/// ⚠️ 规格歧义（已写进完成报告，等制作人裁定）：
-	/// 02 §8 说"无敌帧结束后 3 帧内仍算完美闪避"，但 T13 验收 #2 要求
-	/// "第 <c>DodgeIFrames</c> 帧之后 → 正常结算"。两条不能同时成立——
-	/// 无敌帧之后不再是 <c>Miss</c>，而完美闪避只能由 <c>Miss</c> 触发。
-	/// 本实现按验收 #2 执行（<see cref="IsInvulnerable"/> 严格等于 DodgeIFrames），
-	/// 因此宽容帧**只放宽判定窗，不放宽无敌**，当前是惰性的。
-	/// </summary>
-	public bool IsInPerfectDodgeWindow => _framesSinceStart < InvulnerableFrames + PerfectDodgeGraceFrames;
 
 	/// <summary>后摇中（无敌已结束，但整段还没走完）。</summary>
 	public bool IsInRecovery =>

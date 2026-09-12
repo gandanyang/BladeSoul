@@ -21,7 +21,6 @@ size = Vector3(1.4, 1.6, 2.2)
 collision_layer = 4
 collision_mask = 3
 script = ExtResource("1_attacker")
-ActorId = 103
 DebugName = "突刺枪兵"
 Stats = ExtResource("2_stats")
 Attack = ExtResource("3_attack")

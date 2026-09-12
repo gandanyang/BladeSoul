@@ -146,6 +146,9 @@ public partial class CombatArbiter : Node
 
         defender.ReceiveVerdict(result, attacker, attack, usedIssen);
 
+        Vector3 toDefender = defender.GlobalPosition - attacker.GlobalPosition;
+        toDefender.Y = 0f;
+
         EventBus.Instance?.RaiseHitResolved(new HitEvent
         {
             AttackerId = attacker.ActorId,
@@ -158,6 +161,12 @@ public partial class CombatArbiter : Node
             HitStopFrames = result.HitStopFrames,
             Frame = (int)Engine.GetPhysicsFrames(),
             Killed = defender.IsDead,
+            // 特效层要"打在哪、顺着哪个方向"（T28）。
+            // 接触点用受击框的位置：它就在胸口高度，正是火花该出现的地方。
+            Position = hurtbox.GlobalPosition,
+            Direction = toDefender.LengthSquared() > 0.0001f
+                ? toDefender.Normalized()
+                : -defender.GlobalTransform.Basis.Z,
         });
     }
 }

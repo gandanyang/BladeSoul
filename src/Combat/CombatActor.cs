@@ -87,9 +87,33 @@ public abstract partial class CombatActor : CharacterBody3D, ICombatActorDebug, 
 	private int _deflectChainResetFrames;
 	private PerilousCue _perilousCue = null!;
 
+	/// <summary>自动分配 ActorId 用的游标。0 是"未分配"的哨兵，所以从 100 起递增。</summary>
+	private static int _lastAutoActorId = 100;
+
+	/// <summary>
+	/// 下一个自动 ActorId。
+	///
+	/// 计数器是**静态**的：同一个进程里场景重载后 id 会继续增长。
+	/// 这对"唯一性"没有任何影响（需要的只是**同一场景内**两两不同），
+	/// 而且比"每次重载重置回 100"更安全——重置会让上一个场景漏掉的悬空引用
+	/// 恰好撞上新场景的 id，那正是这个改动想消灭的情形。
+	/// </summary>
+	private static int NextAutoActorId() => ++_lastAutoActorId;
+
 	public override void _Ready()
 	{
 		AddToGroup("combat_actor");
+
+		// ActorId 的唯一性被 CombatArbiter 的确定性排序依赖（04 §15），
+		// 而手工填 id 已经**静默撞号两次**（道场里两个 TrainingDummy 都是 100；
+		// SpearDummy 与 RespawnDummy 都是 102）。撞号的后果不是崩溃、不是报错，
+		// 而是"同帧互击谁先结算"变得不可复现——只在调参时表现为
+		// "怎么这次结果不一样了"，是最难查的一类 bug。
+		//
+		// 所以默认在这里按**树序**分配；树序是确定的，确定性不受影响。
+		// 显式填了非 0 值的仍然用手工值——调试场景有时需要固定 id。
+		if (ActorId == 0)
+			ActorId = NextAutoActorId();
 
 		// 「危」预警是机制必需（T12），放在基类里 → 所有战斗单位自动拥有，
 		// 将来新加的敌人不会有人忘记补。必须在 RegisterStates/Start 之前建好：

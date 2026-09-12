@@ -1,0 +1,9 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/Dev/ReviveTest.cs" id="1_revive"]
+[ext_resource type="Resource" path="res://data/difficulty/migoto.tres" id="2_migoto"]
+
+[node name="ReviveMigoto" type="Node3D"]
+script = ExtResource("1_revive")
+ExpectedRevives = 3
+Difficulty = ExtResource("2_migoto")
