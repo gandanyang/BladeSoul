@@ -1,0 +1,9 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/Dev/ModelShowcase.cs" id="1_ms"]
+
+[node name="ModelShowcase" type="Node3D"]
+script = ExtResource("1_ms")
+PlayerModelPath = "res://assets/models/model_player_congyun_01.glb"
+EnemyModelPath = "res://assets/models/ashigaru_v2d_clean.glb"
+OutputPath = "res://assets/references/t35_model_showcase.png"

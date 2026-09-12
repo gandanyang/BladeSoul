@@ -42,9 +42,19 @@
 
 | `assets/references/ref_enemy_ashigaru_v2_a…f.png`（6 张） | **本地 AI 生成**：ComfyUI ＋ Z-Image Turbo，2026-09-13 | AI 生成内容，本项目自有 | **v2 版输入图**。v1 两次生成 3D 都不满意，按 [12 §6](12-资产来源与后备方案.md) 的六条规格重做；**主用 `_v2_d`（纯白背景，对比度最高）** |
 
+| `assets/references/ref_heroine_aya_view_a…f.png`（6 张） | **本地 AI 生成**：ComfyUI ＋ Z-Image Turbo，2026-09-13 | AI 生成内容，本项目自有 | **女主角/同伴「绫」的各方位参考图**：正面 A 字姿 / 右侧 / 背面 / 左侧 / 左前 3/4 / 面部特写。供 T29 建模（本地 Hunyuan3D 或 Tripo）使用 |
+
+| `assets/references/ref_heroine_aya_concept_a…f.png`（6 张） | **本地 AI 生成**：ComfyUI ＋ Z-Image Turbo，2026-09-12（原 jobs 清单：`_aya_jobs2.txt`） | AI 生成内容，本项目自有 | 「绫」的**人设图**：半身 / 全身 / 背面 / 诊伤 / 雨巷 / 面部特写。气质与配色的锚点 |
+
+| `assets/references/ref_heroine_aya_v2_a…f.png`（6 张） | **本地 AI 生成**：ComfyUI ＋ Z-Image Turbo，2026-09-13 | AI 生成内容，本项目自有 | 「绫」的**各方位参考图 v2（3D 管线用）**：深灰背景 ＋ 无行囊。正面与背面已实测能生成正常模型 |
+
 > 提示词与全部生成参数记在同目录的 `ref_enemy_ashigaru_01.prompt.txt`——
 > **可复现**（固定 seed ＋ 清单文件），换台机器跑同样参数能得到同样的图。
 > v2 的参数记在 `ref_enemy_ashigaru_v2.prompt.txt`（含六张各自的变量与规格对照表）。
+>
+> 「绫」的各方位图参数记在 `ref_heroine_aya_v1.prompt.txt`（含六个 seed 与**四条已知偏差**：
+> 脚底接触阴影未完全去除 / 风格偏手绘感 3D / 年龄感偏小 / 行囊偏大）。
+> v2 的参数与**对照实验记录**记在 `ref_heroine_aya_v2.jobs.txt`（v1 为什么废、两次对照组的数据）。
 
 ## 字体 / 音频库
 

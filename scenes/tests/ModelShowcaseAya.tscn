@@ -1,0 +1,18 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/Dev/ModelShowcase.cs" id="1_ms"]
+
+[node name="ModelShowcaseAya" type="Node3D"]
+script = ExtResource("1_ms")
+PlayerModelPath = "res://assets/models/model_player_congyun_01.glb"
+EnemyModelPath = "res://assets/models/ashigaru_v2d_clean.glb"
+ThirdModelPath = "res://assets/models/heroine_aya_v2a_clean.glb"
+ThirdLabel = "绫"
+OutputPath = "res://assets/references/t29_three_shot.png"
+PlayerTargetHeight = 1.75
+EnemyTargetHeight = 1.7
+ThirdTargetHeight = 1.62
+Spacing = 1.5
+CameraDistance = 3.9
+CameraHeight = 1.35
+LookAtHeight = 0.95

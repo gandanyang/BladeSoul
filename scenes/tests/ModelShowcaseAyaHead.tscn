@@ -1,0 +1,15 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/Dev/ModelShowcase.cs" id="1_ms"]
+
+[node name="ModelShowcaseAyaHead" type="Node3D"]
+script = ExtResource("1_ms")
+PlayerModelPath = ""
+EnemyModelPath = ""
+ThirdModelPath = "res://assets/models/heroine_aya_v2a_clean.glb"
+ThirdLabel = "绫"
+OutputPath = "res://assets/references/t29_aya_head.png"
+ThirdTargetHeight = 1.7
+CameraDistance = 0.82
+CameraHeight = 1.58
+LookAtHeight = 1.58
