@@ -1231,8 +1231,9 @@ Maker 积分有限，而**3D 模型是唯一"主方案一断就真断"的资产�
 
 | 文件 | 说明 |
 |---|---|
-| `G:\BaiduSyncdisk\comfyui-workflow-skill\output\ashigaru_a_0001.png` | **主用** |
-| `G:\BaiduSyncdisk\comfyui-workflow-skill\output\ashigaru_a_0002.png` | 备选 |
+| **`G:\Game\assets\references\ref_enemy_ashigaru_01.png`** | **主用这张** |
+| `G:\Game\assets\references\ref_enemy_ashigaru_02.png` | 备选 |
+| `G:\Game\assets\references\ref_enemy_ashigaru_01.prompt.txt` | **提示词 ＋ 全部生成参数**（可复现） |
 
 魔骸足兵，**A 字站姿 / 中性背景 / 四肢不遮躯干 / 材质分明**——专门按"喂 3D 生成"的要求做的。
 

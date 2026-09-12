@@ -22,6 +22,7 @@ EventBus="*res://src/Core/EventBus.cs"
 AudioDirector="*res://src/Audio/AudioDirector.cs"
 DebugOverlay="*res://src/UI/DebugOverlay.cs"
 CombatVfxDirector="*res://src/Vfx/CombatVfxDirector.cs"
+DialogueBox="*res://src/Dialogue/DialogueBox.cs"
 
 [dotnet]
 

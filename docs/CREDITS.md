@@ -34,6 +34,15 @@
 其余可见内容仍是**程序化灰盒**（`src/Dev/BlockoutRig.cs`），
 或 Godot 内置的 `BoxMesh` / `CapsuleShape3D` / `PlaneMesh`。
 
+### 参考图（非运行时资产）
+
+| 资产 | 来源 | 授权 | 用途 |
+|---|---|---|---|
+| `assets/references/ref_enemy_ashigaru_01.png` / `_02.png` | **本地 AI 生成**：ComfyUI ＋ Z-Image Turbo，2026-09-13 | AI 生成内容，本项目自有 | **魔骸足兵**的 3D 生成输入图（T35 本地 / T36 在线，两路共用同一张） |
+
+> 提示词与全部生成参数记在同目录的 `ref_enemy_ashigaru_01.prompt.txt`——
+> **可复现**（固定 seed ＋ 清单文件），换台机器跑同样参数能得到同样的图。
+
 ## 字体 / 音频库
 
 暂无。UI 使用 Godot 默认字体；BGM 尚未引入。

@@ -34,6 +34,10 @@ public partial class CombatVfxTest : Node3D
     public override async void _Ready()
     {
         AddChild(new CombatArbiter { Name = "CombatArbiter" });
+
+        // 降级等级现在由 QualityDirector 统一持有（T34 归并），
+        // 所以这个场景必须有一个，否则 ForceDegradationLevel 是空操作。
+        AddChild(new Oniblade.World.QualityDirector { Name = "QualityDirector" });
         AddFloor();
 
         // 场上放一个真的战斗单位：用来证明"特效层不碰战斗逻辑"。

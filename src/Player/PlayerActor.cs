@@ -30,6 +30,21 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 	[Export] public Color BodyColor { get; set; } = new(0.22f, 0.26f, 0.34f);
 	[Export] public Color AccentColor { get; set; } = new(0.55f, 0.16f, 0.14f);
 
+	/// <summary>
+	/// 可选的角色外观模型（例如 <c>assets/models/model_player_congyun_01.glb</c>）。
+	/// 配置后用它替换灰盒 <see cref="BlockoutRig"/>——注意静态模型没有骨架，
+	/// 只是整体跟随角色变换，不能做四肢动画；灰盒仍然在跑（不可见），
+	/// 等有绑骨模型时把这里换掉即可。
+	/// </summary>
+	[Export] public PackedScene? VisualModel { get; set; }
+
+	/// <summary>外观模型缩放（AI 生成模型被归一化到 ~1.0 单位高，设定身高 ~175cm）。</summary>
+	[Export] public float VisualModelScale { get; set; } = 1.75f;
+
+	/// <summary>外观模型朝向修正（导入模型的正脸不一定朝 -Z）。</summary>
+	[Export] public Vector3 VisualModelRotationDegrees { get; set; } = Vector3.Zero;
+
+
 	/// <summary>相机支点相对脚底的高度（米）。</summary>
 	[Export] public float CameraHeight { get; set; } = 1.45f;
 
@@ -55,6 +70,7 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 	private Node3D _cameraPivot = null!;
 	private SpringArm3D _springArm = null!;
 	private BlockoutRig _rig = null!;
+	private HumanoidAnimator? _skinAnimator;
 	private readonly PlayerInputBuffer _buffer = new();
 
 	/// <summary>本地帧号，只给"快速重按防御"判定用（02 §8）。</summary>
@@ -115,6 +131,18 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 		_rig = new BlockoutRig();
 		_rig.Build(BodyColor, AccentColor, true);
 		AddChild(_rig);
+
+		if (VisualModel is not null)
+		{
+			var visual = VisualModel.Instantiate<Node3D>();
+			visual.Name = "VisualModel";
+			visual.Scale = Vector3.One * VisualModelScale;
+			visual.RotationDegrees = VisualModelRotationDegrees;
+			AddChild(visual);
+			_rig.Visible = false;
+			_skinAnimator = new HumanoidAnimator(visual);
+		}
+
 
 		PrimaryHitbox = GetNodeOrNull<Hitbox>("Hitbox");
 
@@ -505,6 +533,7 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 		// 演出：灰盒期先复用一次大幅度的受击反馈（"倒下去再撑起来"），
 		// 专门的起身姿势属于动画管线（T24/T25）。
 		_rig.PlayHitReact(2f);
+		_skinAnimator?.PlayHitReact(2f);
 
 		Machine.ForceChange<ReviveState>();
 	}
@@ -859,15 +888,27 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 		// 但覆写时不调 base 是个定时炸弹——等哪天真加了就会静默丢失预警。
 		base.OnAttackStarted(data);
 		_rig.PlayAttack();
+		_skinAnimator?.PlayAttack();
 	}
 
 	protected override void OnTickVisual(float dt, float speed01)
 	{
 		_rig.AnimateLocomotion(speed01, dt);
 		_rig.AnimateCombat(dt);
+
+		if (_skinAnimator is not null)
+		{
+			_skinAnimator.Guarding = IsGuarding;
+			_skinAnimator.AnimateLocomotion(speed01, dt);
+			_skinAnimator.AnimateCombat(dt);
+		}
 	}
 
-	protected override void OnDamaged(int damage) => _rig.PlayHitReact(1f);
+	protected override void OnDamaged(int damage)
+	{
+		_rig.PlayHitReact(1f);
+		_skinAnimator?.PlayHitReact(1f);
+	}
 
 	protected override void OnVerdictReceived(in ResolveResult result)
 	{
@@ -877,13 +918,19 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 			Machine.ForceChange<DeflectState>();
 
 		if (result.Verdict is Combat.Verdict.Block or Combat.Verdict.Deflect or Combat.Verdict.Clash)
+		{
 			_rig.PlayHitReact(0.5f);
+			_skinAnimator?.PlayHitReact(0.5f);
+		}
 
 		// 一闪结算成功 → 现在才播那一刀（T20）。
 		// 放在结算时机而不是按键时机：真一闪从按下到生效隔着 0~N 帧，
 		// 那几帧正是"刀还没落下来"的紧张感，提前播会把节奏拆坏。
 		// 这条也是**弹一闪**（弹开 → buff → 敌人下一刀被一闪）唯一能播到动画的地方。
 		if (result.Verdict == Combat.Verdict.Issen)
+		{
 			_rig.PlayIssen();
+			_skinAnimator?.PlayIssen();
+		}
 	}
 }

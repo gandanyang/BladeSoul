@@ -1,0 +1,174 @@
+{
+  "_note": "绫的全部台词。T30 / 03 §2.7。纪律：① 一律短句 ② 绝不解释（派蒙式台词禁止）③ 引导是提示不是答案 ④ 80/20——闲聊占多数。tone=guidance 的集合应占 ~20%。_note2: 丛云的台词刻意极少，他本来就不说话。",
+  "sets": [
+    {
+      "id": "first_meeting",
+      "summary": "第一次见面。不讲任何设定，让玩家自己发现。",
+      "tone": "chitchat",
+      "lines": [
+        { "speaker": "绫", "text": "别碰。" },
+        { "speaker": "丛云", "text": "为什么？" },
+        { "speaker": "绫", "text": "它还在哭。" },
+        { "speaker": "丛云", "text": "……你听得见？" },
+        { "speaker": "绫", "text": "你听不见？" }
+      ]
+    },
+    {
+      "id": "soul_window",
+      "summary": "她对魔骸的理解方式。",
+      "tone": "chitchat",
+      "lines": [
+        { "speaker": "绫", "text": "你们看见的是怪物。" },
+        { "speaker": "绫", "text": "我看见的是它还剩下什么。" }
+      ]
+    },
+    {
+      "id": "why_follow",
+      "summary": "她不太喜欢剑客，但跟着。",
+      "tone": "chitchat",
+      "lines": [
+        { "speaker": "丛云", "text": "你为什么老跟着我？" },
+        { "speaker": "绫", "text": "怕你死。" },
+        { "speaker": "丛云", "text": "不用。" },
+        { "speaker": "绫", "text": "我知道。" },
+        { "speaker": "丛云", "text": "那还跟着？" },
+        { "speaker": "绫", "text": "因为你很容易死。" }
+      ]
+    },
+    {
+      "id": "shaky_hand",
+      "summary": "拆掉丛云的剑客幻想。接 T20 一闪：刚学会一闪、正得意的时候。",
+      "tone": "chitchat",
+      "lines": [
+        { "speaker": "绫", "text": "你的手在抖。" },
+        { "speaker": "丛云", "text": "没有。" },
+        { "speaker": "绫", "text": "有。" },
+        { "speaker": "丛云", "text": "没有。" },
+        { "speaker": "绫", "text": "那你把茶端过来。" },
+        { "speaker": "绫", "text": "看吧。" }
+      ]
+    },
+    {
+      "id": "heal_offer",
+      "summary": "喝血的叙事解释（接 T18：次数补齐从此有理由）。",
+      "tone": "chitchat",
+      "lines": [
+        { "speaker": "绫", "text": "你又受伤了？" },
+        { "speaker": "丛云", "text": "嗯。" },
+        { "speaker": "绫", "text": "坐下。" }
+      ]
+    },
+    {
+      "id": "sword_trouble",
+      "summary": "她对拿刀的人的态度。",
+      "tone": "chitchat",
+      "lines": [
+        { "speaker": "绫", "text": "你们这些拿刀的人。" },
+        { "speaker": "绫", "text": "真的很麻烦。" }
+      ]
+    },
+    {
+      "id": "bone_bell",
+      "summary": "她腰间三件（09 §10：药囊 / 铜铃 / 旧木牌，后两者是剧情线索）。",
+      "tone": "chitchat",
+      "lines": [
+        { "speaker": "丛云", "text": "那个铃。" },
+        { "speaker": "绫", "text": "嗯。" },
+        { "speaker": "丛云", "text": "谁给的？" },
+        { "speaker": "绫", "text": "不记得了。" }
+      ]
+    },
+    {
+      "id": "eat_something",
+      "summary": "纯闲聊。",
+      "tone": "chitchat",
+      "lines": [
+        { "speaker": "绫", "text": "吃点东西。" },
+        { "speaker": "丛云", "text": "不饿。" },
+        { "speaker": "绫", "text": "你昨天也这么说。" }
+      ]
+    },
+    {
+      "id": "rain",
+      "summary": "纯闲聊。天气是这类游戏最便宜的呼吸感。",
+      "tone": "chitchat",
+      "lines": [
+        { "speaker": "绫", "text": "要下雨了。" },
+        { "speaker": "丛云", "text": "嗯。" },
+        { "speaker": "绫", "text": "你的刀会锈。" }
+      ]
+    },
+    {
+      "id": "no_answers",
+      "summary": "她必须不知道答案——否则会抢掉主角的调查过程。",
+      "tone": "chitchat",
+      "lines": [
+        { "speaker": "丛云", "text": "你知道笼手是什么吗？" },
+        { "speaker": "绫", "text": "不知道。" },
+        { "speaker": "绫", "text": "我只知道它很饿。" }
+      ]
+    },
+    {
+      "id": "sleepless",
+      "summary": "纯闲聊。她比玩家更早发现丛云在变，但此刻还不说。",
+      "tone": "chitchat",
+      "lines": [
+        { "speaker": "绫", "text": "你昨晚睡了没有？" },
+        { "speaker": "丛云", "text": "睡了。" },
+        { "speaker": "绫", "text": "……" }
+      ]
+    },
+    {
+      "id": "thanks",
+      "summary": "前期贯穿台词：你总觉得自己不会死。",
+      "tone": "chitchat",
+      "lines": [
+        { "speaker": "绫", "text": "你总觉得自己不会死。" },
+        { "speaker": "丛云", "text": "……" },
+        { "speaker": "绫", "text": "我不是。" }
+      ]
+    },
+
+    {
+      "id": "cold_wind",
+      "summary": "引导的样板：只给提示，不给答案（03 §2.7 的原例）。",
+      "tone": "guidance",
+      "lines": [
+        { "speaker": "绫", "text": "前面风很冷。" },
+        { "speaker": "丛云", "text": "所以呢？" },
+        { "speaker": "绫", "text": "所以我不走。" }
+      ]
+    },
+    {
+      "id": "too_many",
+      "summary": "引导：告诉玩家「那边很多」，不告诉具体是什么。",
+      "tone": "guidance",
+      "lines": [
+        { "speaker": "绫", "text": "那边今天很吵。" },
+        { "speaker": "丛云", "text": "吵？" },
+        { "speaker": "绫", "text": "很多人在哭。" }
+      ]
+    },
+    {
+      "id": "voice",
+      "summary": "★ 侵蚀分档台词：她关于「那个声音」的话，随阶段换一版（T30 的核心要求）。",
+      "tone": "guidance",
+      "lines": [
+        { "speaker": "绫", "text": "你最近睡得浅。" },
+        { "speaker": "丛云", "text": "还好。" },
+        { "speaker": "绫", "text": "……嗯。" }
+      ],
+      "resonanceLines": [
+        { "speaker": "绫", "text": "你最近是不是听见什么了？" },
+        { "speaker": "丛云", "text": "没有。" },
+        { "speaker": "绫", "text": "你撒谎的时候会看手。" }
+      ],
+      "assimilationLines": [
+        { "speaker": "绫", "text": "那个声音……" },
+        { "speaker": "绫", "text": "越来越像玄斎了吗？" },
+        { "speaker": "丛云", "text": "……" },
+        { "speaker": "绫", "text": "那就不是他了。" }
+      ]
+    }
+  ]
+}

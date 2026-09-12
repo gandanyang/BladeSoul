@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://src/Player/PlayerActor.cs" id="1_player"]
 [ext_resource type="Resource" path="res://data/actors/player_stats.tres" id="2_stats"]
@@ -6,6 +6,7 @@
 [ext_resource type="Resource" path="res://data/difficulty/samurai.tres" id="4_difficulty"]
 [ext_resource type="Script" path="res://src/Combat/Hitbox.cs" id="5_hitbox"]
 [ext_resource type="Script" path="res://src/Combat/Hurtbox.cs" id="6_hurtbox"]
+[ext_resource type="PackedScene" path="res://assets/models/model_player_congyun_01.glb" id="7_model"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
 radius = 0.35
@@ -26,6 +27,8 @@ DebugName = "Player"
 Stats = ExtResource("2_stats")
 Attacks = ExtResource("3_combo")
 Difficulty = ExtResource("4_difficulty")
+VisualModel = ExtResource("7_model")
+VisualModelScale = 1.75
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.875, 0)

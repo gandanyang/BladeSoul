@@ -1,6 +1,7 @@
 using Godot;
 using Oniblade.Combat;
 using Oniblade.Core;
+using Oniblade.World;
 
 namespace Oniblade.Vfx;
 
@@ -19,14 +20,15 @@ public partial class CombatVfxDirector : Node
 {
 	public static CombatVfxDirector? Instance { get; private set; }
 
-	/// <summary>低于这个帧率就降一级。</summary>
-	[Export] public int DegradeFpsThreshold { get; set; } = 55;
-
-	/// <summary>回到这个帧率以上才恢复一级。与降级阈值留出间隙，避免在边界上抖动。</summary>
-	[Export] public int RecoverFpsThreshold { get; set; } = 58;
-
-	/// <summary>0 = 全开，1 = 砍雾，2 = 再砍粒子。</summary>
-	public int DegradationLevel { get; private set; }
+	/// <summary>
+	/// 降级等级**不再由这里持有**——统一听 <see cref="Oniblade.World.QualityDirector"/>
+	/// （08 §3 P1-3：一个数字只能有一个来源）。
+	/// 07 §7 的降级顺序跨三个系统（雾 / 粒子 / 同屏敌人数），
+	/// 各系统各自按 FPS 判断会出现"雾砍了粒子还在"的中间态，而且彼此震荡。
+	///
+	/// 场景里没有 QualityDirector 时退化为 0（不降级）。
+	/// </summary>
+	public int DegradationLevel => QualityDirector.Instance?.Level ?? 0;
 
 	public int DeflectSparkCount { get; private set; }
 	public int ClashSparkCount { get; private set; }
@@ -56,43 +58,11 @@ public partial class CombatVfxDirector : Node
 			Instance = null;
 	}
 
-	public override void _PhysicsProcess(double delta) => UpdateDegradation();
+	/// <summary>强制钉住降级等级（转发给 QualityDirector）。测试与调试面板用。</summary>
+	public void ForceDegradationLevel(int level) => QualityDirector.Instance?.ForceLevel(level);
 
-	/// <summary>被 <see cref="ForceDegradationLevel"/> 钉住之后，自动降级让位。</summary>
-	private bool _degradationPinned;
-
-	private void UpdateDegradation()
-	{
-		if (_degradationPinned)
-			return;
-
-		double fps = Engine.GetFramesPerSecond();
-
-		// headless 与首帧读不到有效值，别让 0 把画质一路降到最低。
-		if (fps <= 0)
-			return;
-
-		if (fps < DegradeFpsThreshold && DegradationLevel < 2)
-			DegradationLevel++;
-		else if (fps > RecoverFpsThreshold && DegradationLevel > 0)
-			DegradationLevel--;
-	}
-
-	/// <summary>
-	/// 强制钉住降级等级，并**停掉自动降级**。给测试与调试面板用。
-	///
-	/// 必须真的"钉住"而不只是"设一次值"：headless 下 <c>Engine.GetFramesPerSecond()</c>
-	/// 读数很低，自动降级会**每帧升一级**，十来帧就把画质压到最低——
-	/// 于是"等级 0 该出粒子"这条断言会莫名其妙地失败（而且失败得很随机）。
-	/// </summary>
-	public void ForceDegradationLevel(int level)
-	{
-		DegradationLevel = Mathf.Clamp(level, 0, 2);
-		_degradationPinned = true;
-	}
-
-	/// <summary>恢复自动降级。</summary>
-	public void ResumeAutoDegradation() => _degradationPinned = false;
+	/// <summary>恢复自动降级（转发给 QualityDirector）。</summary>
+	public void ResumeAutoDegradation() => QualityDirector.Instance?.ResumeAuto();
 
 	private void OnHitResolved(HitEvent e)
 	{
