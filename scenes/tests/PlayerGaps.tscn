@@ -1,0 +1,8 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/Dev/PlayerGapsTest.cs" id="1_gaps"]
+
+[node name="PlayerGaps" type="Node3D"]
+script = ExtResource("1_gaps")
+LevelPath = "res://scenes/levels/Dojo.tscn"
+ModelPath = "res://assets/models/model_player_congyun_01.glb"
