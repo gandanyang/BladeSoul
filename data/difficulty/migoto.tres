@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="DifficultyProfile" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/Combat/Data/DifficultyProfile.cs" id="1_difficulty"]
+
+[resource]
+script = ExtResource("1_difficulty")
+Id = "migoto"
+DisplayName = "見習"
+DeflectWindowFrames = 16
+GuardCancelLockFrames = 2
+IssenWindowFrames = 12
+IssenSafeWindowFrames = 12
+InputBufferFrames = 12
+DodgeBufferFrames = 14
+DodgeIFrames = 14
+DodgeRecoveryFrames = 12
+PerfectDodgeGraceFrames = 6
+CoyoteFrames = 6
+EnemyStartupBonus = 8
+EnemyHealthScale = 0.75
+EnemyAttackIntervalScale = 1.4
+EnemyReactionDelayBonus = 6
+GankMaxAttackers = 1
+PlayerPostureRegenScale = 1.5
+PlayerDamageTakenScale = 0.6
+ReviveCount = 3
+ShowPerilousCue = true
+HalfAutoGuard = true
+ShowParryRhythm = true

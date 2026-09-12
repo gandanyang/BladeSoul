@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="DifficultyProfile" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/Combat/Data/DifficultyProfile.cs" id="1_difficulty"]
+
+[resource]
+script = ExtResource("1_difficulty")
+Id = "kenshi"
+DisplayName = "剑客"
+DeflectWindowFrames = 12
+GuardCancelLockFrames = 3
+IssenWindowFrames = 9
+IssenSafeWindowFrames = 8
+InputBufferFrames = 10
+DodgeBufferFrames = 12
+DodgeIFrames = 10
+DodgeRecoveryFrames = 15
+PerfectDodgeGraceFrames = 4
+CoyoteFrames = 5
+EnemyStartupBonus = 3
+EnemyHealthScale = 0.9
+EnemyAttackIntervalScale = 1.15
+EnemyReactionDelayBonus = 3
+GankMaxAttackers = 2
+PlayerPostureRegenScale = 1.2
+PlayerDamageTakenScale = 0.85
+ReviveCount = 2
+ShowPerilousCue = true
+HalfAutoGuard = false
+ShowParryRhythm = true

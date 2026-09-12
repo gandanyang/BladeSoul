@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="AttackData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/Combat/Data/AttackData.cs" id="1_attack"]
+
+[resource]
+script = ExtResource("1_attack")
+Id = "player_light_02"
+DisplayName = "轻斩·贰"
+Type = 0
+StartupFrames = 9
+ActiveFrames = 4
+RecoveryFrames = 16
+CancelFromRecoveryFrame = 7
+Damage = 12
+PostureDamage = 10
+Knockback = 0.4
+AdvanceDistance = 0.8
+AnimName = "light_02"

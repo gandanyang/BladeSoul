@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="AttackData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/Combat/Data/AttackData.cs" id="1_attack"]
+
+[resource]
+script = ExtResource("1_attack")
+Id = "enemy_elite_slash"
+DisplayName = "精英横斩"
+Type = 0
+StartupFrames = 18
+ActiveFrames = 4
+RecoveryFrames = 24
+CancelFromRecoveryFrame = -1
+Damage = 18
+PostureDamage = 26
+Knockback = 0.8
+AdvanceDistance = 1.2
+AnimName = "slash"

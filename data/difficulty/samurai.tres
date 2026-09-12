@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="DifficultyProfile" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/Combat/Data/DifficultyProfile.cs" id="1_difficulty"]
+
+[resource]
+script = ExtResource("1_difficulty")
+Id = "samurai"
+DisplayName = "武士"
+DeflectWindowFrames = 9
+GuardCancelLockFrames = 4
+IssenWindowFrames = 6
+IssenSafeWindowFrames = 6
+InputBufferFrames = 8
+DodgeBufferFrames = 10
+DodgeIFrames = 8
+DodgeRecoveryFrames = 18
+PerfectDodgeGraceFrames = 3
+CoyoteFrames = 4
+EnemyStartupBonus = 0
+EnemyHealthScale = 1.0
+EnemyAttackIntervalScale = 1.0
+EnemyReactionDelayBonus = 0
+GankMaxAttackers = 2
+PlayerPostureRegenScale = 1.0
+PlayerDamageTakenScale = 1.0
+ReviveCount = 1
+ShowPerilousCue = true
+HalfAutoGuard = false
+ShowParryRhythm = false

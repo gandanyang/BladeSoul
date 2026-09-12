@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="AttackData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/Combat/Data/AttackData.cs" id="1_attack"]
+
+[resource]
+script = ExtResource("1_attack")
+Id = "player_charged_02"
+DisplayName = "蓄力斩·二"
+Type = 0
+StartupFrames = 48
+ActiveFrames = 6
+RecoveryFrames = 30
+CancelFromRecoveryFrame = -1
+Damage = 58
+PostureDamage = 80
+Knockback = 1.6
+AdvanceDistance = 1.5
+Parryable = false
+AnimName = "charged_02"

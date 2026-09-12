@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="AttackData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/Combat/Data/AttackData.cs" id="1_attack"]
+
+[resource]
+script = ExtResource("1_attack")
+Id = "enemy_perilous_grab"
+DisplayName = "危·抓取"
+Type = 2
+StartupFrames = 26
+ActiveFrames = 4
+RecoveryFrames = 36
+CancelFromRecoveryFrame = -1
+Damage = 35
+PostureDamage = 45
+Knockback = 1.6
+AdvanceDistance = 1.8
+Unblockable = true
+Parryable = false
+IssenVulnerable = false
+Perilous = true
+PerilousKind = 3
+AnimName = "perilous_grab"

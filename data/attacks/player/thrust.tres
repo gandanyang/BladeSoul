@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="AttackData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/Combat/Data/AttackData.cs" id="1_attack"]
+
+[resource]
+script = ExtResource("1_attack")
+Id = "player_thrust"
+DisplayName = "突刺"
+Type = 1
+StartupFrames = 16
+ActiveFrames = 4
+RecoveryFrames = 24
+CancelFromRecoveryFrame = 12
+Damage = 16
+PostureDamage = 26
+Knockback = 1.0
+AdvanceDistance = 2.6
+Thrust = true
+AnimName = "thrust"

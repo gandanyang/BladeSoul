@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="AttackData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/Combat/Data/AttackData.cs" id="1_attack"]
+
+[resource]
+script = ExtResource("1_attack")
+Id = "enemy_perilous_sweep"
+DisplayName = "危·横扫"
+Type = 0
+StartupFrames = 34
+ActiveFrames = 6
+RecoveryFrames = 30
+CancelFromRecoveryFrame = -1
+Damage = 30
+PostureDamage = 40
+Knockback = 1.2
+AdvanceDistance = 0.6
+Unblockable = true
+Parryable = false
+IssenVulnerable = true
+Perilous = true
+PerilousKind = 2
+AnimName = "perilous_sweep"
