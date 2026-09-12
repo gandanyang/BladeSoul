@@ -13,7 +13,7 @@ namespace Oniblade.Player;
 /// 玩家。它只负责两件事：**把输入翻译成意图**，以及**把状态翻译成画面**。
 /// 判定、伤害、体干全部交给 <see cref="CombatActor"/> 与裁决器。
 /// </summary>
-public partial class PlayerActor : CombatActor, IGuardInput
+public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListener
 {
 	private static readonly PlayerAction[] WatchedActions = Enum.GetValues<PlayerAction>();
 
@@ -32,6 +32,13 @@ public partial class PlayerActor : CombatActor, IGuardInput
 
 	/// <summary>相机支点相对脚底的高度（米）。</summary>
 	[Export] public float CameraHeight { get; set; } = 1.45f;
+
+	/// <summary>
+	/// 闪避速度倍率（× <see cref="CombatActor.MoveSpeed"/>）。
+	/// 位移 = 无敌帧全速 + 后摇线性衰减，所以 2.4 倍大约是一个身位的垫步。
+	/// 放在 <c>[Export]</c> 而不是 .tres 里，是因为它只影响灰盒观感、不影响判定。
+	/// </summary>
+	[Export] public float DodgeSpeedScale { get; set; } = 2.4f;
 
 	/// <summary>玩家不会被一闪秒杀（01 文档：任何机制都不该一击终结玩家）。</summary>
 	public override EnemyTier IssenTier => EnemyTier.Boss;
@@ -113,13 +120,15 @@ public partial class PlayerActor : CombatActor, IGuardInput
 
 	/// <summary>
 	/// 在基类的四个状态之上注册防御层（02 文档 §1）：
-	/// <see cref="GuardState"/> 按住格挡、<see cref="DeflectState"/> 弹开成功后的 12 帧。
+	/// <see cref="GuardState"/> 按住格挡、<see cref="DeflectState"/> 弹开成功后的 12 帧、
+	/// <see cref="DodgeState"/> 垫步闪避（T13）。
 	/// </summary>
 	protected override void RegisterStates(StateMachine machine)
 	{
 		base.RegisterStates(machine);
 		machine.Add(new GuardState());
 		machine.Add(new DeflectState());
+		machine.Add(new DodgeState());
 	}
 
 	/// <summary>防御键是否按住（<see cref="IGuardInput"/>）。敌人不实现它，所以不受防御状态影响。</summary>
@@ -177,6 +186,7 @@ public partial class PlayerActor : CombatActor, IGuardInput
 		if (Input.IsActionJustPressed("dodge"))
 			_buffer.Push(PlayerAction.Dodge);
 
+		TryEnterDodge();
 		TryEnterGuard();
 	}
 
@@ -216,6 +226,17 @@ public partial class PlayerActor : CombatActor, IGuardInput
 				source = GuardEntrySource.Cancel;
 				break;
 
+			// 闪避后摇可以被防御取消（T13 规则 4），但**无敌帧内不让**：
+			// 那几帧正是闪避的全部价值，被防御取消等于把玩家的 i-frame 吃掉，
+			// 表现出来就是"我明明闪了却还是被打中"。注意按下防御的那一刻
+			// DodgeState 的帧号还是 0，所以必须查 IsInvulnerableNow 而不是"有没有在闪"。
+			case DodgeState dodge:
+				if (dodge.IsInvulnerableNow)
+					return;
+
+				source = GuardEntrySource.Neutral;
+				break;
+
 			default:
 				source = GuardEntrySource.Neutral;
 				break;
@@ -245,6 +266,71 @@ public partial class PlayerActor : CombatActor, IGuardInput
 	/// <summary>攻击后摇的取消窗开了没有（02 §1：轻斩壹从后摇第 6 帧起可被防御取消）。</summary>
 	private static bool IsAttackCancelWindowOpen(AttackState attack) =>
 		attack.Sequence.IsRunning && attack.Sequence.Current.CanCancelAt(attack.Sequence.Frame);
+
+	/// <summary>
+	/// 闪避键 → <see cref="DodgeState"/>（T13 / 02 §2.2）。
+	///
+	/// 与防御**刻意不同**，闪避走**输入缓冲**：02 §8 要求"闪避缓冲 10 帧，连打闪避键不会空"，
+	/// 而且攻击后摇里预输入的闪避必须等到取消窗打开那一刻才生效。
+	/// 缓冲里的一帧输入只会被消费一次，所以不会出现"一次按键连闪两下"。
+	///
+	/// 方向由输入侧算好写进状态——相机臂是 TopLevel、和身体解耦（见 OnActorReady），
+	/// 状态类拿不到相机，也不该知道相机在哪。
+	/// </summary>
+	private void TryEnterDodge()
+	{
+		if (IsDead || Machine.Current is StaggerState or DodgeState)
+			return;
+
+		// 攻击中：只有进入后摇的取消窗之后才允许被闪避取消（02 §1 取消表）。
+		// 窗口没开时**不消费缓冲**，让这次输入继续躺在缓冲里等窗口打开。
+		if (Machine.Current is AttackState attack && !IsAttackCancelWindowOpen(attack))
+			return;
+
+		if (!_buffer.Consume(PlayerAction.Dodge, Difficulty?.DodgeBufferFrames ?? 0))
+			return;
+
+		DodgeState dodge = Machine.Get<DodgeState>();
+		dodge.InvulnerableFrames = Difficulty?.DodgeIFrames ?? 0;
+		dodge.RecoveryFrames = Difficulty?.DodgeRecoveryFrames ?? 0;
+		dodge.PerfectDodgeGraceFrames = Difficulty?.PerfectDodgeGraceFrames ?? 0;
+		dodge.Speed = MoveSpeed * DodgeSpeedScale;
+		dodge.Direction = ResolveDodgeDirection();
+
+		Machine.Change<DodgeState>();
+	}
+
+	/// <summary>闪避方向：有方向输入就朝那个方向闪；没有就后跳（相对相机向后退）。</summary>
+	private Vector3 ResolveDodgeDirection()
+	{
+		if (TryGetMoveIntent(out MoveIntent intent) && intent.Direction.LengthSquared() > 0.0001f)
+			return intent.Direction.Normalized();
+
+		// 相机基的 +Z 是"镜头背面"方向，沿它走就是远离视线 = 后跳。
+		Vector3 backward = _cameraPivot.GlobalTransform.Basis.Z;
+		backward.Y = 0f;
+		return backward.Normalized();
+	}
+
+	/// <summary>无敌帧（02 §4 规则 1：裁决器直接给 Miss，连一闪都打不中）。</summary>
+	public override bool IsInvulnerableNow =>
+		base.IsInvulnerableNow
+		|| (Machine is { Current: DodgeState dodge } && dodge.IsInvulnerableNow);
+
+	/// <summary>本场战斗成功躲开的攻击次数（完美闪避的证据，T13 端到端测试断言它）。</summary>
+	public int EvadedAttackCount { get; private set; }
+
+	/// <summary>
+	/// 裁决器判了 Miss（<see cref="IAttackEvasionListener"/>）——这是"完美闪避"唯一的信息来源：
+	/// Miss 不走 <c>ReceiveVerdict</c>，所以 <c>OnVerdictReceived</c> 永远等不到它。
+	/// </summary>
+	public void OnAttackEvaded(CombatActor attacker)
+	{
+		EvadedAttackCount++;
+
+		if (Machine is { Current: DodgeState dodge })
+			dodge.OnAttackEvaded();
+	}
 
 	public override bool ConsumeAttackInput()
 		=> !Gauntlet.IsDeepAbsorbing && _buffer.Consume(PlayerAction.Attack, InputBufferFrames);

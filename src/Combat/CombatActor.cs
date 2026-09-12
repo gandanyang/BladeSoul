@@ -1,5 +1,6 @@
 using System;
 using Godot;
+using Oniblade.Audio;
 using Oniblade.Combat.Data;
 using Oniblade.Combat.States;
 using Oniblade.Core;
@@ -77,10 +78,17 @@ public abstract partial class CombatActor : CharacterBody3D, ICombatActorDebug, 
 
 	private int _hitStopFrames;
 	private int _deflectChainResetFrames;
+	private PerilousCue _perilousCue = null!;
 
 	public override void _Ready()
 	{
 		AddToGroup("combat_actor");
+
+		// 「危」预警是机制必需（T12），放在基类里 → 所有战斗单位自动拥有，
+		// 将来新加的敌人不会有人忘记补。必须在 RegisterStates/Start 之前建好：
+		// AttackState 退出时会立刻调 OnAttackEnded，那时它必须已经存在。
+		_perilousCue = new PerilousCue { Name = "PerilousCue" };
+		AddChild(_perilousCue);
 
 		int maxHealth = Stats?.MaxHealth ?? 100;
 		int maxPosture = Stats?.MaxPosture ?? 100;
@@ -149,9 +157,32 @@ public abstract partial class CombatActor : CharacterBody3D, ICombatActorDebug, 
 	protected virtual void PollLocalInput() { }
 	protected virtual void OnTickVisual(float dt, float speed01) { }
 	/// <summary>由 <see cref="States.AttackState"/> 调用；子类用它驱动动画。</summary>
-	public virtual void OnAttackStarted(AttackData data) { }
+	public virtual void OnAttackStarted(AttackData data)
+	{
+		// 基类实现 = 「危」预警（T12）。它是**机制必需**而不是某个敌人的特色：
+		// 02 §3 裁定"弹开只应对一般攻击"之后，玩家分不清一般/危就会直接挨打。
+		// 放在基类里，任何新敌人（BOSS、精英）都自动获得。
+		// **子类覆写时必须在开头调 `base.OnAttackStarted(data)`。**
+		if (!data.Perilous)
+			return;
 
-	public virtual void OnAttackEnded() { }
+		_perilousCue.Show(data.PerilousKind, data.TotalFrames);
+		AudioDirector.Instance?.PlayCombat(SfxFor(data.PerilousKind));
+	}
+
+	/// <summary>攻击结束：收起「危」预警。子类覆写时请调 `base.OnAttackEnded()`。</summary>
+	public virtual void OnAttackEnded() => _perilousCue.Hide();
+
+	/// <summary>
+	/// 「危」三种形态各有一个**音高不同**的音效（07 §2.2：高/中/低）。
+	/// 音高是可分辨的维度，改音量不是——所以这三个音效在 T3 就是按音高生成的。
+	/// </summary>
+	private static CombatSfx SfxFor(PerilousKind kind) => kind switch
+	{
+		PerilousKind.Sweep => CombatSfx.PerilousSweep,
+		PerilousKind.Grab => CombatSfx.PerilousGrab,
+		_ => CombatSfx.PerilousThrust,
+	};
 	protected virtual void OnVerdictReceived(in ResolveResult result) { }
 	protected virtual void OnDamaged(int damage) { }
 	protected virtual void OnPostureBroken() { }

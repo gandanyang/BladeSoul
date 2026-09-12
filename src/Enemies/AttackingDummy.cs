@@ -70,6 +70,9 @@ public partial class AttackingDummy : CombatActor
 
 	public override void OnAttackStarted(AttackData data)
 	{
+		// 基类负责「危」预警（T12 硬要求：覆写时必须调 base）。
+		base.OnAttackStarted(data);
+
 		_attackFrames.Add((int)Engine.GetPhysicsFrames());
 		_rig.PlayAttack();
 	}

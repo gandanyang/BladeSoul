@@ -130,7 +130,15 @@ public partial class CombatArbiter : Node
         ResolveResult result = CombatResolver.Resolve(attackerSnapshot, defenderSnapshot);
 
         if (result.Verdict == Verdict.Miss)
+        {
+            // 完美闪避的入口（T13 规则 3）：攻击被**完全躲开**时通知防御方。
+            // Miss 不走 CombatActor.ReceiveVerdict（它连顿帧都不给，否则玩家会以为打中了），
+            // 所以这里是"我躲开了"这件事**唯一**的可观测点。
+            if (defender is IAttackEvasionListener listener)
+                listener.OnAttackEvaded(attacker);
+
             return;
+        }
 
         hitbox.MarkHit(defender);
 
