@@ -96,6 +96,9 @@ public partial class Hud : CanvasLayer
 	private Label _prompt = null!;
 
 	private float _healthLagRatio = 1f;
+
+	/// <summary>体干轨道的底边（相对玩家面板左上角）。填充从这条线往上长。</summary>
+	private float _postureTrackBottom;
 	private int _pulseFramesLeft;
 	private Color _pulseColor = Colors.White;
 	private int _promptFramesLeft;
@@ -240,9 +243,11 @@ public partial class Hud : CanvasLayer
 		_healthLag.Visible = _healthLag.OffsetRight > _healthLag.OffsetLeft + 0.5f;
 
 		// 体干条**向上生长**（05 §4.3：形状区分优先于颜色，灰度下也要分得清）
+		// ★ 必须绑到轨道自己的底边上：OffsetTop/OffsetBottom 是相对锚点的绝对偏移，
+		// 只写 -height/0 会把它画到面板顶边之外（截图里才发现，数值断言查不出来）。
 		float postureHeight = PlayerPostureBarHeight * PlayerPostureRatio;
-		_postureFill.OffsetTop = -postureHeight;
-		_postureFill.OffsetBottom = 0f;
+		_postureFill.OffsetTop = _postureTrackBottom - postureHeight;
+		_postureFill.OffsetBottom = _postureTrackBottom;
 
 		if (_player.HealChargesLeft != _lastHealDots)
 		{
@@ -373,6 +378,12 @@ public partial class Hud : CanvasLayer
 
 	private void BuildUi()
 	{
+		// 未锁定敌人的头顶细条（T31 / 11 §4.2）。**先加**，这样它画在玩家面板、
+		// 敌方面板与边缘脉冲的下层——它是最弱的一层信息，不该盖住结算提示。
+		EnemyBars bars = new() { Name = "EnemyBars" };
+		AddChild(bars);
+		Bars = bars;
+
 		Vector2 size = PlayerBarSize;
 		float panelWidth = size.X;
 		float panelHeight = size.Y * 2f + PlayerPostureBarHeight + 24f;
@@ -386,6 +397,7 @@ public partial class Hud : CanvasLayer
 
 		// 体干：轨在上、填充从轨底往上长（OffsetTop 为负、OffsetBottom 为 0）
 		float postureTrackTop = size.Y + 5f;
+		_postureTrackBottom = postureTrackTop + PlayerPostureBarHeight;
 		_postureTrack = MakeRect(_playerPanel, TrackColor, 0f, postureTrackTop, size.X, PlayerPostureBarHeight);
 		_postureFill = MakeRect(_playerPanel, PlayerPostureColor,
 			0f, postureTrackTop + PlayerPostureBarHeight, size.X, 0f);
@@ -447,6 +459,9 @@ public partial class Hud : CanvasLayer
 
 	/// <summary>伤害数字层（自检与调试用）。</summary>
 	public DamageNumbers Numbers { get; private set; } = null!;
+
+	/// <summary>未锁定敌人的头顶细条（自检与调试用）。</summary>
+	public EnemyBars Bars { get; private set; } = null!;
 
 	/// <summary>建一个 Control 并**入树**（锚点相对父节点）。</summary>
 	private Control MakeControl(string name, float anchorX, float anchorY,

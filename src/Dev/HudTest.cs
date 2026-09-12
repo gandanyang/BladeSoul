@@ -21,6 +21,8 @@ namespace Oniblade.Dev;
 /// 3. 弹开 / 一闪 / 格挡 / 挨打 四种结算各触发对应的提示
 /// 4. ★ **HUD 只读**：灌一个 Damage=999 的命中事件，战斗单位一个数值都不许变
 ///    （照抄 T28 的做法，这条最重要）
+/// 5. 未锁定敌人的头顶细条**只在受伤或靠近时显示**（11 §4.2）：
+///    远处没受伤不挂条 → 挨一下必须挂条 → 伤后计时走完自动收回去
 ///
 /// 截图（卡片验收 4）需要带窗口跑，无头出不了。
 ///
@@ -32,6 +34,7 @@ public partial class HudTest : Node3D
 
     private PlayerActor _player = null!;
     private TrainingDummy _enemy = null!;
+    private TrainingDummy _barsDummy = null!;
     private Hud _hud = null!;
 
     public override async void _Ready()
@@ -66,6 +69,7 @@ public partial class HudTest : Node3D
             await CheckEnemyPostureAndMagnitude();
             CheckPrompts();
             await CheckReadOnlyBoundary();
+            await CheckEnemyBars();
         }
         catch (System.Exception ex)
         {
@@ -236,6 +240,62 @@ public partial class HudTest : Node3D
 
         GD.Print($"[HUD] 只读边界：灌入 Damage=999 后，玩家 {_player.Health.Current}/" +
                  $"{_player.Health.Max}、敌人 {_enemy.Health.Current}/{_enemy.Health.Max} 均未变 ✓");
+    }
+
+    // ── 5. 未锁定敌人的头顶细条（11 §4.2）─────────────────────
+
+    /// <summary>
+    /// 对照组的做法：**最近的那个永远是焦点**（Hud 自己选的），而焦点有屏幕上方的大面板，
+    /// 头顶条要跳过它。所以这里另放一个假人当"未锁定敌人"，靠它验显示规则。
+    /// </summary>
+    private async System.Threading.Tasks.Task CheckEnemyBars()
+    {
+        EnemyBars? bars = _hud.Bars;
+        Check(bars is not null, "Hud 没有建出 EnemyBars 层");
+
+        if (bars is null)
+            return;
+
+        // 纯规则四个象限 —— 这是"同屏 8 个不会变仪表盘"的全部依据
+        Check(EnemyBars.ShouldShow(3f, 0, 7f, 26f), "近处未受伤的敌人没挂条");
+        Check(!EnemyBars.ShouldShow(30f, 0, 7f, 26f),
+            "远处未受伤的敌人也挂了条——同屏 8 个立刻变仪表盘（11 §4.2）");
+        Check(EnemyBars.ShouldShow(20f, 120, 7f, 26f), "受伤的敌人没挂条——受伤必须保持可见");
+        Check(!EnemyBars.ShouldShow(40f, 120, 7f, 26f), "超出 MaxDistance 的敌人仍挂条");
+
+        _barsDummy = Load<TrainingDummy>("res://scenes/actors/TrainingDummy.tscn");
+        _barsDummy.Position = new Vector3(0f, 0.1f, -5f);
+        AddChild(_barsDummy);
+        await WaitPhysicsFrames(6);
+
+        Check(_hud.FocusActorId == _enemy.ActorId,
+            $"焦点被第二个假人抢走了（焦点 {_hud.FocusActorId}）——对照组不成立");
+
+        // ① 靠近但没受伤 → 显示（走"靠近"那一路）
+        Check(bars.DecidedVisibleCount >= 1,
+            $"近处（5m）的敌人没挂条（读数 {bars.DecidedVisibleCount}）");
+        Check(bars.NearShownCount >= 1, "近处那条不是按'靠近'显示的");
+        GD.Print($"[HUD] 头顶条：靠近 5m 未受伤 → 显示 {bars.DecidedVisibleCount} 条 ✓");
+
+        // ② 拉到 22m、没受伤 → 一条都不许有
+        _barsDummy.Position = new Vector3(0f, 0.1f, -22f);
+        await WaitPhysicsFrames(6);
+        Check(bars.DecidedVisibleCount == 0,
+            $"远处（22m）未受伤的敌人仍挂条：{bars.DecidedVisibleCount} 条");
+
+        // ③ 同样远，但挨了一下 → 必须重新挂上，且走"受伤"那一路
+        _barsDummy.Health.Apply(Mathf.Max(1, _barsDummy.Health.Max / 10));
+        await WaitPhysicsFrames(6);
+        Check(bars.DecidedVisibleCount >= 1, "受伤的远处敌人没有挂条");
+        Check(bars.HurtShownCount >= 1, "受伤那条没走'受伤保持'那一路");
+        GD.Print($"[HUD] 头顶条：22m 受伤 → 显示 {bars.DecidedVisibleCount} 条（受伤保持）✓");
+
+        // ④ 受伤计时走完 → 自己收回去（否则会永久挂满条）
+        await WaitPhysicsFrames(bars.HurtHoldFrames + 12);
+        Check(bars.DecidedVisibleCount == 0,
+            $"伤后计时走完仍挂着条：{bars.DecidedVisibleCount} 条");
+
+        GD.Print("[HUD] 头顶条：伤后计时走完自动隐藏 ✓");
     }
 
     /// <summary>玩家打出的命中（AttackerId 是玩家 → 会出伤害数字）。</summary>
