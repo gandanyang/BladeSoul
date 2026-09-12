@@ -157,6 +157,13 @@ public abstract partial class CombatActor : CharacterBody3D, ICombatActorDebug, 
 	/// <summary>玩家读输入缓冲，敌人读 AI。默认永不主动攻击。</summary>
 	public virtual bool ConsumeAttackInput() => false;
 
+	/// <summary>
+	/// 敌人 AI 用：本帧是否想发动攻击。玩家永远返回 false（走输入缓冲）。
+	/// 有这个钩子，敌人就能直接复用 <see cref="States.AttackState"/>，
+	/// 不必为"会还手的假人"再写一套出招状态。
+	/// </summary>
+	public virtual bool WantsToAttack() => false;
+
 	/// <summary>移动意图。默认站桩。</summary>
 	public virtual bool TryGetMoveIntent(out MoveIntent intent)
 	{
@@ -193,7 +200,7 @@ public abstract partial class CombatActor : CharacterBody3D, ICombatActorDebug, 
 			IsInvulnerable = IsInvulnerableNow,
 			IsActive = IsAttackActiveNow,
 			InDeflectWindow = DeflectWindowFramesLeft > 0,
-			IsGuarding = DeflectWindowFramesLeft > 0 || IsGuarding,
+			IsGuarding = IsGuarding,
 			GuardAngleDeg = angleDeg,
 			CurrentPosture = Posture.Current,
 			MaxPosture = Posture.Max,

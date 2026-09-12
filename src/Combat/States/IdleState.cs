@@ -15,7 +15,8 @@ public sealed class IdleState : ActorState
     {
         base.Tick();
 
-        if (Actor.ConsumeAttackInput() && Actor.Machine.Has<AttackState>())
+        // WantsToAttack 在前：敌人 AI 的攻击意图不会误消费玩家的输入缓冲。
+        if ((Actor.WantsToAttack() || Actor.ConsumeAttackInput()) && Actor.Machine.Has<AttackState>())
         {
             ChangeState<AttackState>();
             return;

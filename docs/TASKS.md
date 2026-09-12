@@ -17,12 +17,20 @@
 
 | 编号 | 任务 | 负责 | 状态 | 依赖 |
 |---|---|---|---|---|
-| **T1** | 可玩闭环：战斗管线 + 三连击 + 木桩 | ~~执行 agent~~ → **制作人** | ✅ 完成（待验收） | — |
-| **T2** | 调试面板 F1~F8 | 执行 agent | 🟡 待验收 | 接口已冻结 |
-| **T3** | 音频层 + 程序化占位音效 + 总线 | ~~执行 agent~~ → **制作人** | ✅ 完成（待验收） | 接口已冻结 |
+| **T1** | 可玩闭环：战斗管线 + 三连击 + 木桩 | ~~执行 agent~~ → **制作人** | ✅ 完成（已验收，用户确认手感 OK） | — |
+| **T2** | 调试面板 F1~F8 | 执行 agent（唯一成功的） | ✅ 完成 | 接口已冻结 |
+| **T3** | 音频层 + 程序化占位音效 + 总线 | ~~执行 agent~~ → **制作人** | ✅ 完成 | 接口已冻结 |
 | T4 | 修订 06/README 的口径（M5 = 1.0） | 制作人 | ✅ 完成 | — |
-| T5 | `CombatTuning`（弹开窗唯一计算入口） | 待派发 | ⚪ 未开始 | T1 |
-| T6 | `BossPhaseProfile` 数据层 | 待派发 | ⚪ 未开始 | T1 |
+| T5 | `CombatTuning`（弹开窗唯一计算入口，08 §3 P1-3 红线） | 制作人 | ✅ 完成 | T1 |
+| **T6** | **玩家格挡与弹开**（M1 核心） | 执行 agent | 🔵 进行中 | 接口已冻结 |
+| **T7** | **挥砍假人**（会还手的靶子） | 执行 agent | 🔵 进行中 | 接口已冻结 |
+| T8 | 死亡与重开协议（≤3 秒原地重开，08 §3 P1-2） | 待派发 | ⚪ 未开始 | T6 |
+| T9 | `BossPhaseProfile` 数据层（08 §3 P2-2） | 待派发 | ⚪ 未开始 | — |
+
+### M1 的唯一验收标准
+
+> **"弹开成功时会想再试一次。"**（08 文档 §5）
+> 它只能由人试出来——T6/T7 完成后必须真的上手玩一次，别只看测试是绿的。
 
 ---
 
@@ -160,3 +168,95 @@
 1. agent 完成 → 状态改「待验收」→ 报告交付物与验证结果
 2. 制作人跑 `tools\check.ps1` + 读代码 + 对照验收标准
 3. 通过 → 制作人 `git commit`；不通过 → 打回并写明原因
+
+---
+
+## T6 · 玩家格挡与弹开（M1 核心）
+
+**背景**：弹开是本项目的立命之本（02 §2.2 / 08 §2.2）。
+玩家侧现在只有 `CombatActor.IsGuarding` 与 `OpenDeflectWindow()` 两个空槽，没有任何状态驱动它们。
+
+### 交付物
+
+| 文件 | 内容 |
+|---|---|
+| `src/Combat/States/GuardState.cs`（新） | 按住防御的持续状态 |
+| `src/Combat/States/DeflectState.cs`（新） | 弹开成功后的 12 帧特殊状态 |
+| `src/Player/PlayerActor.cs`（改） | 覆写 `RegisterStates` 注册上面两个状态；覆写 `OnVerdictReceived` 在弹开时切 `DeflectState`；防御时给移动意图降速 |
+
+### 规则（全部来自 02 文档，不许自己发明）
+
+1. **进入**：按住 `guard` 键 → 进入 `GuardState`。
+2. **弹开窗**：进入防御的**那一帧**调 `Actor.OpenDeflectWindow(...)`；
+   窗口帧数**必须**由 `CombatTuning.ResolveDeflectWindowFrames(Difficulty.DeflectWindowFrames)` 算出
+   （已存在，纯函数 + 单测）。**不许直接读 `Difficulty.DeflectWindowFrames` 去用。**
+3. **取消硬直**：从其他状态（攻击/受击）取消进入防御时，前
+   `Difficulty.GuardCancelLockFrames` 帧**不打开弹开窗**——
+   但这几帧**仍然算格挡**（`IsGuarding = true`）。
+   这就是"惩罚只惩罚效率，不惩罚存活"，也是防"防御键连打"的手段。
+4. **格挡姿态**：`IsGuarding = true`；移动速度降到约 40%；攻击键不生效。
+5. **退出**：松开 `guard` → `IsGuarding = false` → 回 `IdleState`。
+6. **弹开成功**：`CombatActor.ReceiveVerdict` 已经做完了顿帧、授予 `IssenKind.Deflect` buff、
+   累加连击数。你要做的只是在 `PlayerActor.OnVerdictReceived` 里
+   `Machine.ForceChange<DeflectState>()`。
+7. **`DeflectState`**：12 帧，保持防御姿态、不接受移动输入；结束后回 `IdleState`
+   （若仍按住 guard 则回 `GuardState`）。
+
+### 硬约束
+
+- 数值只允许来自 `data/difficulty/*.tres`（窗口宽度、取消硬直）和这一个常量（12 帧弹开状态）。
+- 音效不用你管：`AudioDirector` 订阅了 `EventBus.HitResolved`，会自动播放并做音高递增。
+- **不要改** `CombatActor.cs` / `CombatResolver.cs` / `CombatTuning.cs`（接口已冻结）。
+  确实需要改就在报告里写明，由制作人改。
+- **不要碰** `src/Enemies/`、`src/UI/`、`project.godot`。
+- 不要执行 `git commit`。
+
+### 验收标准
+
+- [ ] `powershell -NoProfile -File tools\check.ps1` 全绿
+- [ ] 新增 xUnit 测试：覆盖"取消硬直期内不弹开但仍格挡"与"窗口内弹开"（抽成纯逻辑再测）
+- [ ] `godot --headless` 无 ERROR
+- [ ] 完成报告：怎么手测（按什么键、该看到什么）、验证输出、偏离规格处
+
+---
+
+## T7 · 挥砍假人（会还手的靶子）
+
+**背景**：现在的木桩不还手，**弹开根本没法测**——没有攻击可以弹。
+05 文档 §4.4 把"攻击模式固定的假人"列为道场第一个训练模块，这就是它。
+
+### 交付物
+
+- `src/Enemies/AttackingDummy.cs`（新，继承 `CombatActor`）
+- `scenes/actors/AttackingDummy.tscn`（新）
+- `scenes/levels/Dojo.tscn`（改：把其中一个木桩换成挥砍假人）
+
+### 行为
+
+1. 站桩不追人，但**始终转向玩家**。
+2. 玩家进入攻击距离（约 2.2m）且冷却结束后发动攻击。
+3. 攻击**复用现成的 `AttackState`**：在 `OnActorReady` 里
+   `Machine.Get<AttackState>().Configure(new[] { Attack })`，
+   `Attack` 是 `[Export] AttackData?`，在场景里指向
+   `res://data/attacks/enemies/grunt_slash.tres`（前摇 24 / 判定 4 / 后摇 30）。
+4. 发动时机：覆写 `public override bool WantsToAttack()`
+   （这个钩子已经给你加好了，见 `CombatActor`），返回
+   `冷却结束 && 玩家在距离内`。冷却 = `[Export] int AttackIntervalFrames`，默认 **60 帧**
+   （02 §10 要求两次攻击间隔 ≥45 帧）。
+5. 攻击结束回 `IdleState`，冷却开始计时，如此循环。
+6. **不得读玩家输入**（02 §10 铁律）：不能因为玩家按了攻击就取消自己的前摇。
+
+### 硬约束
+
+- 帧数据只来自 `.tres`，代码里不许写前摇/后摇秒数。
+- **不要改** `CombatActor.cs` / `src/Combat/States/*` / `PlayerActor.cs` / `src/UI/` / `project.godot`。
+- 假人**不该被打死**（`Invincible = true`），它是训练靶。
+- 不要执行 `git commit`。
+
+### 验收标准
+
+- [ ] `tools\check.ps1` 全绿
+- [ ] `godot --headless` 无 ERROR
+- [ ] **可自证的证据**：无头跑 ≥300 帧，打印出招次数与每次出招的帧号
+      （证明它确实在按节奏出招，而不是"编译过就算"）
+- [ ] 完成报告：怎么手测、验证输出、偏离规格处
