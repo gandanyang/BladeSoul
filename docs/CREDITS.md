@@ -40,8 +40,11 @@
 |---|---|---|---|
 | `assets/references/ref_enemy_ashigaru_01.png` / `_02.png` | **本地 AI 生成**：ComfyUI ＋ Z-Image Turbo，2026-09-13 | AI 生成内容，本项目自有 | **魔骸足兵**的 3D 生成输入图（T35 本地 / T36 在线，两路共用同一张） |
 
+| `assets/references/ref_enemy_ashigaru_v2_a…f.png`（6 张） | **本地 AI 生成**：ComfyUI ＋ Z-Image Turbo，2026-09-13 | AI 生成内容，本项目自有 | **v2 版输入图**。v1 两次生成 3D 都不满意，按 [12 §6](12-资产来源与后备方案.md) 的六条规格重做；**主用 `_v2_d`（纯白背景，对比度最高）** |
+
 > 提示词与全部生成参数记在同目录的 `ref_enemy_ashigaru_01.prompt.txt`——
 > **可复现**（固定 seed ＋ 清单文件），换台机器跑同样参数能得到同样的图。
+> v2 的参数记在 `ref_enemy_ashigaru_v2.prompt.txt`（含六张各自的变量与规格对照表）。
 
 ## 字体 / 音频库
 
