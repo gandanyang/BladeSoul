@@ -28,14 +28,17 @@
 | T9 | `BossPhaseProfile` 数据层（08 §3 P2-2） | 待派发 | ⚪ 未开始 | — |
 | **T10** | **连打防御惩罚覆盖中立态**（02 §8 裁定） | 制作人（agent 消息三次丢失） | ✅ 完成 | T6 |
 | T11 | **弹开/一闪的职责边界**（02 §3 裁定：一闪应对一切，弹开只应对一般攻击） | 制作人 | ✅ 完成 | — |
-| **T12** | **危攻击预警 + 危·突刺枪兵**（02 §3 裁定的连带后果） | 执行 agent | 🔵 进行中 | T11 |
-| T13 | 闪避（`DodgeState` + 无敌帧 + 完美闪避授予避一闪 buff） | 待派发（等 T10 放开 `PlayerActor.cs`） | ⚪ 未开始 | T10 |
-| T14 | 死亡与重开协议（≤3 秒原地重开，08 §3 P1-2） | 待派发 | ⚪ 未开始 | T13 |
+| T12 | **危攻击预警 + 危·突刺枪兵** | 🟢 **可领取** | ⚪ 未开始 | T11 ✅ |
+| T13 | **闪避（`DodgeState` + 无敌帧）** | 🟢 **可领取** | ⚪ 未开始 | T10 ✅ |
+| T14 | **死亡与重开协议（≤3 秒原地重开）** | 🟢 **可领取** | ⚪ 未开始 | — |
 | T15 | **世界观 / 主角 / 反派 / 成长系统设定补充**（03 §2.5·§2.6·§6.4~6.7） | 制作人 | ✅ 完成 | — |
-| T16 | `UpgradeTree` 升级数据资源（三条线 10 级，03 §6.4） | 待派发 | ⚪ 未开始 | T15 |
-| T17 | 魄的掉落与吸收 + `SoulWallet` + 侵蚀度（03 §6.4·§6.6） | 待派发 | ⚪ 未开始 | T16 |
-| **T18** | **喝血 `HealState`**（02 §2.4，01 §0 规则 2 的直接落地） | 执行 agent | 🔵 进行中 | — |
-| T19 | 自动吸魂（魄牵引 + 连续吸魂反馈 + 深吸） | 待派发 | 🟢 **可开工** | 前置已就绪：`RespawnDummy`（会死、会重生） |
+| T16 | `UpgradeTree` 升级数据资源（三条线 10 级，03 §6.4） | 🟢 可领取 | ⚪ 未开始 | T15 ✅ |
+| T17 | `SoulWallet` + 侵蚀度接 `GameState`（03 §6.4·§6.6） | 🟢 可领取 | ⚪ 未开始 | T19 ✅ |
+| T18 | **喝血 `HealState`**（02 §2.4） | 🟢 **可领取** | ⚪ 未开始 | — |
+| T19 | 自动吸魂（魄牵引 + 连续吸魂反馈 + 深吸） | 制作人 | ✅ 完成 | — |
+
+> **领取方式**：把对应卡片整段复制给执行 agent 即可，卡片是自包含的
+> （规格、约束、验收、禁止改动的文件都写在里面）。
 
 ### M1 的唯一验收标准
 
@@ -433,3 +436,87 @@
 - **不要碰** `src/Enemies/`、`src/UI/`、`project.godot`、`docs/00`。
 - `project.godot` 里的 `item_use` 键（R）已经存在，直接用。
 - 不要执行 `git commit`。不要停下来问我。
+
+---
+
+## T13 · 闪避（`DodgeState` + 无敌帧）
+
+**背景**：02 §2.2 定义了闪避，01 §3 的**路径 B**（"闪避 + 普攻能通关"）整条建立在它上面，
+05 §6 把它写进了验收清单——**但它在里程碑任务表里一次都没出现过**（08 §5「M1 缺项修正」）。
+在"弹开只应对一般攻击"这条裁定之后，闪避还是**危攻击的保底答案**。
+
+### 交付物
+
+| 文件 | 内容 |
+|---|---|
+| `src/Combat/States/DodgeState.cs`（新） | 闪避：无敌帧 → 后摇；完美闪避授予避一闪 buff |
+| `src/Player/PlayerActor.cs`（改） | 覆写 `RegisterStates` 注册 `DodgeState`；`dodge` 键触发；把方向交给闪避 |
+
+### 规则（全部来自 02 §2.2，不许自己发明）
+
+| # | 规则 |
+|---|---|
+| 1 | **输入**：`dodge` 键（空格，已存在于 `project.godot`） |
+| 2 | **无敌帧**：`0 ~ Difficulty.DodgeIFrames` 帧内 `IsInvulnerableNow = true`。裁决器规则 1 会直接给 `Miss`，**连一闪都打不中**（02 §4）。数值只来自 `DifficultyProfile.DodgeIFrames`，不许写死 |
+| 3 | **完美闪避**：无敌帧内**实际躲开了一次攻击**（收到 `Verdict.Miss`）→ `GrantIssen(IssenKind.Dodge, 14)`。这是"避一闪"的入口（一闪本体是 M3，本任务只给 buff） |
+| 4 | **后摇**：`Difficulty.DodgeRecoveryFrames` 帧（武士 18），可被**防御**取消 |
+| 5 | **方向**：有方向输入就朝那个方向闪；没有就后跳。注意相机臂是 `TopLevel = true`（与身体解耦），移动方向要从相机算——照抄 `PlayerActor.TryGetMoveIntent` 的做法 |
+| 6 | **完美闪避宽容**：无敌帧结束后 `Difficulty.PerfectDodgeGraceFrames` 帧内仍算完美闪避（02 §8） |
+
+### 硬约束
+
+- **不要改** `CombatResolver.cs` / `CombatTuning.cs` / `CombatActor.cs` / `States/GuardState.cs` / `States/AttackState.cs` / `Combat/GuardWindow.cs`。
+- **不要碰** `src/Enemies/` / `src/Progression/` / `src/UI/` / `project.godot` / `docs/00` / `data/actors/*`。
+- 不要执行 `git commit`。不要停下来问我；有歧义按 02 §2.2 判断并在报告里写明。
+
+### 验收
+
+1. `powershell -NoProfile -File tools\check.ps1` 全绿（现在 6 步）。
+2. 新增 xUnit：无敌帧边界（第 `DodgeIFrames` 帧内 → `Miss`；之后 → 正常结算）。
+3. **无头端到端**（放 `scenes/tests/`）：让挥砍假人出招，机器人在**无敌帧内**闪避 → 断言 `Verdict.Miss` 且没掉血；对照组在**无敌帧外**闪避 → 断言掉血。
+4. 完美闪避后断言 `IssenBuff == IssenKind.Dodge` 且剩余 14 帧。
+5. 完成报告：怎么手测（按什么键、该看到什么）、验证输出、偏离规格处。
+
+---
+
+## T14 · 死亡与重开协议（≤3 秒原地重开）
+
+**背景**：01 §0 **规则 1（死亡没有持久性惩罚）** + 08 §3 P1-2。
+原设计有"死亡后魂可原地取回"，**已删除**——掉魂再回去捡本身就是跑图惩罚。
+调试面板的 F7 目前是"重载场景"，改完之后它应该调用这套原地重开。
+
+### 交付物
+
+| 文件 | 内容 |
+|---|---|
+| `src/Combat/States/DeadState.cs`（新） | 死亡状态：不再接受输入、播死亡表现 |
+| `src/Core/BattleReset.cs`（新；位置你判断，但要放在 `src/Core/`） | **原地重开协议**：把所有战斗单位复位，**不重载场景** |
+| `src/Combat/CombatActor.cs`（改） | 补一个可复位的接口或虚方法——**只加不改**，现有语义一律不许动 |
+| `src/Player/PlayerActor.cs`（改） | 玩家死亡 → 触发重开流程 |
+| `data/**/*.tres` | 重开相关的帧数放进数据，不许写死 |
+
+### 规则
+
+| # | 规则 |
+|---|---|
+| 1 | 玩家死亡 → **≤ 3 秒（180 帧）** 内回到可控状态，**原地**重开，不重载场景、不退回主菜单 |
+| 2 | **不掉的**：升级、魄、喝血次数、侵蚀度。死亡不扣任何持久资源 |
+| 3 | **要复位的**：所有战斗单位的位置、朝向、血量、体干、状态机、buff、顿帧 |
+| 4 | 敌人侧的**重生计时也要重置**（`TrainingDummy` / `AttackingDummy` / `RespawnDummy`），否则会出现"重开后假人还卡在死亡等待里" |
+| 5 | 调试面板 **F7 改成调用这套协议**（它现在是 `ReloadCurrentScene`，见 T2 完成报告） |
+
+### 硬约束
+
+- **不要改** `CombatResolver.cs` / `CombatTuning.cs` / `States/AttackState.cs` / `States/GuardState.cs` / `Combat/GuardWindow.cs` 的既有语义。
+- **不要碰** `src/Progression/`（吸魂与侵蚀已经在工作）、`project.godot`、`docs/00`。
+- 不要执行 `git commit`。不要停下来问我。
+
+### 验收（时间必须实测，不许估）
+
+1. `powershell -NoProfile -File tools\check.ps1` 全绿。
+2. **无头端到端**：把玩家打死 → 逐帧数，断言：
+   - 玩家在 **≤180 帧**内回到初始位置，状态为 `IdleState`
+   - 血量/体干满、`IsDead == false`
+   - **能吃输入**（例：重开后按 `move_right` 真的能走动）
+   - 敌人也复位了（位置 + 血量）
+3. 完成报告里给出**实测的重开帧数**——不是"应该小于 180"。
