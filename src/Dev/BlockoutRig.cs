@@ -19,7 +19,10 @@ public partial class BlockoutRig : Node3D
 	private Node3D _body = null!;
 	private float _locomotionPhase;
 	private float _attackElapsed = -1f;
+	private float _hitReactElapsed = -1f;
+	private float _hitReactStrength;
 	private const float AttackDuration = 0.5f;
+	private const float HitReactDuration = 0.22f;
 
 	public void Build(Color primary, Color accent, bool weapon)
 	{
@@ -71,8 +74,39 @@ public partial class BlockoutRig : Node3D
 		_attackElapsed = 0f;
 	}
 
+	/// <summary>
+	/// 受击反馈：后仰 + 抖动。灰盒阶段唯一能让人"感觉到打中了"的东西，
+	/// 所以它必须存在——没有它，命中就只是一个数字变化。
+	/// </summary>
+	public void PlayHitReact(float strength)
+	{
+		_hitReactElapsed = 0f;
+		_hitReactStrength = Mathf.Clamp(strength, 0f, 2f);
+	}
+
 	public void AnimateCombat(float delta)
 	{
+		if (_hitReactElapsed >= 0f)
+		{
+			_hitReactElapsed += delta;
+			float reactT = Mathf.Clamp(_hitReactElapsed / HitReactDuration, 0f, 1f);
+			float falloff = (1f - reactT) * (1f - reactT) * _hitReactStrength;
+
+			_headPivotLean = -0.55f * falloff;
+			_bodyShake = new Vector3(Mathf.Sin(_hitReactElapsed * 90f) * 0.05f * falloff, 0f, 0f);
+
+			HeadPivot.Rotation = new Vector3(_headPivotLean, 0f, 0f);
+			_body.Position = _bodyShake;
+			_body.Rotation = new Vector3(0f, 0f, Mathf.Sin(_hitReactElapsed * 70f) * 0.12f * falloff);
+
+			if (reactT >= 1f)
+			{
+				_hitReactElapsed = -1f;
+				HeadPivot.Rotation = Vector3.Zero;
+				_body.Rotation = Vector3.Zero;
+			}
+		}
+
 		if (_attackElapsed < 0f)
 			return;
 
@@ -86,6 +120,9 @@ public partial class BlockoutRig : Node3D
 		if (t >= 1f)
 			_attackElapsed = -1f;
 	}
+
+	private float _headPivotLean;
+	private Vector3 _bodyShake;
 
 	private Node3D AddLimb(string name, Vector3 origin, float radius, float length, Material limbMat, Material tipMat, bool isArm)
 	{

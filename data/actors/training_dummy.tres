@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="ActorStats" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/Combat/Data/ActorStats.cs" id="1_stats"]
+
+[resource]
+script = ExtResource("1_stats")
+Id = "training_dummy"
+DisplayName = "木桩"
+MaxHealth = 100
+MaxPosture = 120
+PostureRegenPerSecond = 14.0
+PostureRegenDelayFrames = 45
+MoveSpeed = 0.0
+SprintSpeed = 0.0
+AttackMoveSpeed = 0.0
+TurnSpeed = 0.0
+Tier = 0

@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="PlayerAttackSet" load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://src/Combat/Data/PlayerAttackSet.cs" id="1_set"]
+[ext_resource type="Resource" path="res://data/attacks/player/light_01.tres" id="2_light1"]
+[ext_resource type="Resource" path="res://data/attacks/player/light_02.tres" id="3_light2"]
+[ext_resource type="Resource" path="res://data/attacks/player/light_03.tres" id="4_light3"]
+[ext_resource type="Resource" path="res://data/attacks/player/thrust.tres" id="5_thrust"]
+[ext_resource type="Resource" path="res://data/attacks/player/charged_01.tres" id="6_charged1"]
+[ext_resource type="Resource" path="res://data/attacks/player/charged_02.tres" id="7_charged2"]
+[ext_resource type="Resource" path="res://data/attacks/player/charged_03.tres" id="8_charged3"]
+
+[resource]
+script = ExtResource("1_set")
+Light1 = ExtResource("2_light1")
+Light2 = ExtResource("3_light2")
+Light3 = ExtResource("4_light3")
+Thrust = ExtResource("5_thrust")
+Charged1 = ExtResource("6_charged1")
+Charged2 = ExtResource("7_charged2")
+Charged3 = ExtResource("8_charged3")

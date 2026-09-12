@@ -41,4 +41,10 @@ public interface ICombatActorDebug
 
     /// <summary>当前弹开连击数。</summary>
     int DeflectChain { get; }
+
+    /// <summary>
+    /// 输入缓冲的人类可读快照，例如 <c>"dodge(2), attack(0)"</c>；没有缓冲内容时为空串。
+    /// 调试面板的 WINDOWS 区块用它。
+    /// </summary>
+    string InputBufferDebug { get; }
 }

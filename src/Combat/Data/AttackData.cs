@@ -58,22 +58,25 @@ public partial class AttackData : Resource
     [Export] public string AnimName { get; set; } = "";
     [Export] public PackedScene? HitFx { get; set; }
 
-    // ── 派生属性：逻辑帧计算的唯一入口 ───────────────────────────
-    public int TotalFrames => StartupFrames + ActiveFrames + RecoveryFrames;
-    public int ActiveStart => StartupFrames;
-    public int ActiveEnd => StartupFrames + ActiveFrames;
-    public int RecoveryStart => ActiveEnd;
+    // ── 派生属性：统一转成纯结构再算，保证与单测用的是同一套逻辑 ──
+    public AttackTiming ToTiming() => new()
+    {
+        StartupFrames = StartupFrames,
+        ActiveFrames = ActiveFrames,
+        RecoveryFrames = RecoveryFrames,
+        CancelFromRecoveryFrame = CancelFromRecoveryFrame,
+    };
 
-    public bool IsActiveAt(int frame) => frame >= ActiveStart && frame < ActiveEnd;
-    public bool IsInRecoveryAt(int frame) => frame >= RecoveryStart && frame < TotalFrames;
+    public int TotalFrames => ToTiming().TotalFrames;
+    public int ActiveStart => ToTiming().ActiveStart;
+    public int ActiveEnd => ToTiming().ActiveEnd;
+    public int RecoveryStart => ToTiming().RecoveryStart;
+    public bool Cancelable => ToTiming().Cancelable;
+    public int CancelOpenFrame => ToTiming().CancelOpenFrame;
 
-    /// <summary>这一招是否允许被取消。</summary>
-    public bool Cancelable => CancelFromRecoveryFrame >= 0;
-
-    /// <summary>取消窗开启的绝对帧号；不可取消时返回 int.MaxValue。</summary>
-    public int CancelOpenFrame => Cancelable ? RecoveryStart + CancelFromRecoveryFrame : int.MaxValue;
-
-    public bool CanCancelAt(int frame) => frame >= CancelOpenFrame;
+    public bool IsActiveAt(int frame) => ToTiming().IsActiveAt(frame);
+    public bool IsInRecoveryAt(int frame) => ToTiming().IsInRecoveryAt(frame);
+    public bool CanCancelAt(int frame) => ToTiming().CanCancelAt(frame);
 
     /// <summary>转换为裁决器能吃的纯结构（不带 Godot 类型）。</summary>
     public AttackTraits ToTraits() => new()

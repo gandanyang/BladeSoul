@@ -1,0 +1,57 @@
+using Godot;
+using Oniblade.Combat;
+using Oniblade.Dev;
+
+namespace Oniblade.Enemies;
+
+/// <summary>
+/// 木桩。M0.5 的靶子：**它的存在意义是让手感第一次变得可感知**，
+/// 所以它必须有反应（顿帧、受击抖动、体干可见地涨），不能一动不动。
+/// </summary>
+public partial class TrainingDummy : CombatActor
+{
+	[Export] public Color BodyColor { get; set; } = new(0.42f, 0.33f, 0.2f);
+	[Export] public Color AccentColor { get; set; } = new(0.24f, 0.19f, 0.12f);
+
+	/// <summary>打不死（练连段用）。关掉它就是普通敌人。</summary>
+	[Export] public bool Invincible { get; set; } = true;
+
+	private BlockoutRig _rig = null!;
+
+	protected override void OnActorReady()
+	{
+		_rig = new BlockoutRig();
+		_rig.Build(BodyColor, AccentColor, false);
+		AddChild(_rig);
+
+		PrimaryHitbox = GetNodeOrNull<Hitbox>("Hitbox");
+	}
+
+	protected override void OnTickVisual(float dt, float speed01)
+	{
+		_rig.AnimateLocomotion(0f, dt);
+		_rig.AnimateCombat(dt);
+	}
+
+	protected override void OnDamaged(int damage) => _rig.PlayHitReact(1f);
+
+	protected override void OnVerdictReceived(in ResolveResult result)
+	{
+		if (result.Verdict is Combat.Verdict.Block or Combat.Verdict.Deflect or Combat.Verdict.Clash)
+			_rig.PlayHitReact(0.5f);
+	}
+
+	/// <summary>体干破裂后立刻回满，这样它可以被无限次练（道场的基本要求）。</summary>
+	protected override void OnPostureBroken() => Posture.Reset();
+
+	public override void Die()
+	{
+		if (Invincible)
+		{
+			Health.Heal(Health.Max);
+			return;
+		}
+
+		base.Die();
+	}
+}

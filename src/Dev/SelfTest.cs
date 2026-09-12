@@ -18,6 +18,7 @@ public partial class SelfTest : Node
     private int _resources;
     private int _attacks;
     private int _difficulties;
+    private int _actorData;
 
     public override void _Ready()
     {
@@ -26,7 +27,7 @@ public partial class SelfTest : Node
         foreach (string error in _errors)
             GD.PrintErr($"[自检] ✗ {error}");
 
-        GD.Print($"[自检] 资源 {_resources} 个（招式 {_attacks} / 难度 {_difficulties}），错误 {_errors.Count} 项");
+        GD.Print($"[自检] 资源 {_resources} 个（招式 {_attacks} / 难度 {_difficulties} / 角色数据 {_actorData}），错误 {_errors.Count} 项");
 
         if (_errors.Count == 0)
             GD.Print("[自检] ✓ 通过");
@@ -94,12 +95,26 @@ public partial class SelfTest : Node
             _attacks++;
             if (resource is not AttackData attack)
             {
-                _errors.Add($"{path} 不是 AttackData（实际 {resource.GetType().Name}）");
+                _errors.Add($"{path} 不是 AttackData（实际 {resource.GetType().Name}）——data/attacks/ 下只许放招式");
                 return;
             }
 
             InspectAttack(path, attack);
+            return;
         }
+
+        // data/actors/ 下是角色数据包：属性表与招式表。
+        if (path.Contains("/actors/"))
+        {
+            _actorData++;
+            if (resource is ActorStats or PlayerAttackSet)
+                return;
+
+            _errors.Add($"{path} 不是 ActorStats 也不是 PlayerAttackSet（实际 {resource.GetType().Name}）");
+            return;
+        }
+
+        _errors.Add($"{path} 放在了一个 SelfTest 不认识的目录下，请更新自检规则");
     }
 
     private void InspectAttack(string path, AttackData attack)

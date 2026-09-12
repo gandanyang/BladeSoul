@@ -1,19 +1,52 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=10 format=3]
 
-[ext_resource type="Script" path="res://src/Player/PlayerController.cs" id="1_player"]
+[ext_resource type="Script" path="res://src/Player/PlayerActor.cs" id="1_player"]
+[ext_resource type="Resource" path="res://data/actors/player_stats.tres" id="2_stats"]
+[ext_resource type="Resource" path="res://data/actors/player_attacks.tres" id="3_combo"]
+[ext_resource type="Resource" path="res://data/difficulty/samurai.tres" id="4_difficulty"]
+[ext_resource type="Script" path="res://src/Combat/Hitbox.cs" id="5_hitbox"]
+[ext_resource type="Script" path="res://src/Combat/Hurtbox.cs" id="6_hurtbox"]
 
-[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_player"]
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
 radius = 0.35
 height = 1.75
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_hurt"]
+radius = 0.45
+height = 1.8
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_hit"]
+size = Vector3(1.7, 1.6, 2.0)
 
 [node name="Player" type="CharacterBody3D"]
 collision_layer = 2
 collision_mask = 5
 script = ExtResource("1_player")
+ActorId = 1
+DebugName = "Player"
+Stats = ExtResource("2_stats")
+Attacks = ExtResource("3_combo")
+Difficulty = ExtResource("4_difficulty")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.875, 0)
-shape = SubResource("CapsuleShape3D_player")
+shape = SubResource("CapsuleShape3D_body")
+
+[node name="Hurtbox" type="Area3D" parent="."]
+collision_layer = 8
+collision_mask = 0
+monitoring = false
+script = ExtResource("6_hurtbox")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Hurtbox"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+shape = SubResource("CapsuleShape3D_hurt")
+
+[node name="Hitbox" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.0, -1.2)
+script = ExtResource("5_hitbox")
+Shape = SubResource("BoxShape3D_hit")
+TargetMask = 16
 
 [node name="CameraPivot" type="Node3D" parent="."]
 
