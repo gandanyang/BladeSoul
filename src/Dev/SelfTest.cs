@@ -23,6 +23,8 @@ public partial class SelfTest : Node
     private int _audio;
     private int _world;
 
+    private int _materials;
+
     public override void _Ready()
     {
         Scan("res://data");
@@ -31,7 +33,7 @@ public partial class SelfTest : Node
         foreach (string error in _errors)
             GD.PrintErr($"[自检] ✗ {error}");
 
-        GD.Print($"[自检] 资源 {_resources} 个（招式 {_attacks} / 难度 {_difficulties} / 角色数据 {_actorData} / 氛围 {_world}），音效 {_audio} 个，错误 {_errors.Count} 项");
+        GD.Print($"[自检] 资源 {_resources} 个（招式 {_attacks} / 难度 {_difficulties} / 角色数据 {_actorData} / 氛围 {_world} / 材质 {_materials}），音效 {_audio} 个，错误 {_errors.Count} 项");
 
         if (_errors.Count == 0)
             GD.Print("[自检] ✓ 通过");
@@ -146,6 +148,21 @@ public partial class SelfTest : Node
                 return;
 
             _errors.Add($"{path} 不是 AtmosphereProfile（实际 {resource.GetType().Name}）");
+            return;
+        }
+
+        // data/materials/ 下是共享材质（T35）。
+        // 存在的理由：本地生成的资产用**顶点色**上色（没有 UV/贴图），
+        // 而 glTF 导入**不会**自动打开 vertex_color_use_as_albedo——
+        // 实测 COLOR_0 导进去了但材质里那个开关是 false，模型在引擎里仍是一片灰。
+        // 所以这类资产必须显式套一个开了该开关的材质。
+        if (path.Contains("/materials/"))
+        {
+            _materials++;
+            if (resource is Material)
+                return;
+
+            _errors.Add($"{path} 不是 Material（实际 {resource.GetType().Name}）");
             return;
         }
 

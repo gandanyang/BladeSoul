@@ -65,7 +65,7 @@ class Scene:
         self.sub.append((rtype, sid, lines))
         return sid
 
-    def node(self, name, ntype, parent=".", groups=None, instance=None, **props):
+    def node(self, name, ntype, parent=".", groups=None, instance=None, index=None, **props):
         """type 传空字符串 = 实例化节点（头部不写 type=，写 instance=）。
 
         parent 传 None = 根节点（根节点**不能**有 parent 属性）。
@@ -75,6 +75,8 @@ class Scene:
         attrs = f' type="{ntype}"' if ntype else ""
         if parent:
             attrs += f' parent="{parent}"'
+        if index is not None:
+            attrs += f' index="{index}"'
         if instance:
             attrs += f' instance=ExtResource("{instance}")'
         if groups:
@@ -150,6 +152,29 @@ def _atmosphere(scene, lanterns):
         scene.node(f"Lantern{index}", "Marker3D", "Lanterns",
                    groups=["lantern"], transform=_transform((lx, ly, lz)))
 
+
+def _showcase(scene, name, model_path, material_path, position, ext_ids, yaw=0.0, mesh_path="world/geometry_0"):
+    """把一个 .glb 摆进场景，并给它实例**内部**的网格挂材质（T35）。
+
+    为什么不用脚本：Godot 的 .tscn 支持给实例场景内部的节点写覆盖块
+    （下面两个 index=0 的空/属性块），所以"套材质"这件事**零代码** —— 已实测。
+
+    这里要套材质的原因是硬的：glTF 导入**不会**自动打开
+    vertex_color_use_as_albedo（实测 COLOR_0 在、材质里那个开关是 false），
+    而本地生成的魔骸没有 UV/贴图、全靠顶点色，不套就是一片灰。
+    """
+    model_id, mat_id = ext_ids
+    model = scene.add_ext("PackedScene", model_path, model_id)
+    scene.add_ext("Material", material_path, mat_id)
+
+    scene.node(name, "", ".", instance=model, transform=_transform(position))
+
+    parent = name
+    for part in mesh_path.split("/"):
+        last = part == mesh_path.split("/")[-1]
+        scene.node(part, "", parent, index=0,
+                   **({"material_override": f'ExtResource("{mat_id}")'} if last else {}))
+        parent = f"{parent}/{part}"
 
 def _combat_area(scene, name, parent, center, size):
     """战斗区标记：Area3D + BoxShape3D，加入 combat_area 组，供自检读净空。
@@ -239,6 +264,16 @@ def build_dojo():
     # 路径刻意避开四根柱子（柱心在 ±6, ±5，最外沿 ±6.3）：
     # 长边走 x=±8.5、横边走 z=-6.5，离柱子至少 1.2m。
     _atmosphere(scene, [(-3.0, 4.2, 6.0), (3.0, 4.2, 6.0)])
+
+    # 本地 Hunyuan3D 生成的魔骸足兵（T35）：摆在出生点正前方偏右，
+    # 一按 F5 就能看见。y 的偏移是**落地补偿**——模型的几何原点在身体中心
+    # （实测局部 Y ∈ [-0.866, +0.834]），不补会有半截陷进地板。
+    # ⚠️ 换模型的话这个数要重新量：python -c "import trimesh;print(trimesh.load('…').bounds[0][1])"
+    _showcase(scene, "Makugai",
+              "res://assets/models/ashigaru_v2d_colored.glb",
+              "res://data/materials/makugai_body.tres",
+              (3.2, 0.866, -6.2),
+              ("11_makugai", "12_makugai_mat"))
 
     _path(scene, [
         (0.0, 10.5), (0.0, 7.0), (0.0, 3.0), (0.0, 0.0), (0.0, -6.5),
