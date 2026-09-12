@@ -36,6 +36,16 @@ public partial class DeflectTrainingTest : Node3D
     /// <summary>02 §10：两次攻击的最小间隔。</summary>
     private const int MinAttackIntervalFrames = 45;
 
+    /// <summary>
+    /// **连打模式**：完全不看时机，每 2 帧松手、每 2 帧按下。
+    /// 用来验证 02 §8 的"连打防御惩罚"在**中立态**上确实生效
+    /// （原实现只覆盖了从攻击/受击取消进入防御的那一半）。
+    ///
+    /// 期望：拿不到弹开收益，但**一次都不该挨打**——
+    /// 惩罚只惩罚效率，不惩罚存活（01 文档的立场）。
+    /// </summary>
+    [Export] public bool SpamMode { get; set; }
+
     private readonly List<string> _failures = new();
     private readonly List<HitEvent> _contacts = new();
 
@@ -66,13 +76,33 @@ public partial class DeflectTrainingTest : Node3D
         if (_bus is not null)
             _bus.HitResolved += OnHitResolved;
 
-        // ── 简易"弹开机器人"：在刀落下前 8 帧按下防御，攻击结束就松手 ──
+        // ── 简易"弹开机器人"：在刀落下前几帧按下防御，攻击结束就松手 ──
         // 这正是 T6 想让玩家学会的动作，只不过由代码执行，好在无头环境里可复现。
+        // SpamMode 下换成一个"完全不看时机"的连打机器人，两个模式共用同一套结算链路。
+        GD.Print($"[弹开训练] 模式 = {(SpamMode ? "连打（不看时机）" : "看时机按")}");
+
         bool guardHeld = false;
 
         for (int frame = 0; frame < TotalFrames; frame++)
         {
             await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
+
+            if (SpamMode)
+            {
+                // 2 帧按 / 2 帧松，周而复始，刻意与假人的出招节奏错开。
+                if (frame % 4 == 0)
+                {
+                    Input.ActionPress("guard");
+                    guardHeld = true;
+                }
+                else if (frame % 4 == 2)
+                {
+                    Input.ActionRelease("guard");
+                    guardHeld = false;
+                }
+
+                continue;
+            }
 
             int framesUntilActive = FramesUntilEnemyActive();
 
@@ -165,9 +195,23 @@ public partial class DeflectTrainingTest : Node3D
         GD.Print($"[弹开训练] 玩家 HP {_player.Health.Current}/{_player.Health.Max}，体干 {_player.Posture.Current}/{_player.Posture.Max}，弹开连击 {_player.DeflectChain}");
 
         Check(_contacts.Count > 0, "假人出招了但一次都没碰到玩家：判定框/距离/层掩码有问题，弹开根本没法测");
-        Check(deflects > 0, "机器人按在窗口内却一次都没弹开：GuardState 的弹开窗没接上裁决器");
-        Check(hits == 0, $"全程按住防御还挨了 {hits} 次打：格挡没有生效（04 §14 红线）");
-        Check(_player.Health.Current == _player.Health.Max, "玩家掉了血：格挡/弹开没有兜住伤害");
+
+        if (SpamMode)
+        {
+            // 连打模式的验收：**拿不到弹开收益**。
+            //
+            // 这里刻意不断言 hits == 0：连打机器人每 2 帧真的松一次手，
+            // 松手的空隙里挨打是它自己造成的，不是系统在惩罚它。
+            // 这恰恰是连打的第二重代价——**冒进本身就会露破绽**，
+            // 是自然涌现的，比人为加惩罚更干净。
+            Check(deflects <= 1, $"连打防御拿到了 {deflects} 次弹开：02 §8 的连打惩罚没有在中立态生效");
+        }
+        else
+        {
+            Check(deflects > 0, "机器人按在窗口内却一次都没弹开：GuardState 的弹开窗没接上裁决器");
+            Check(hits == 0, $"全程按住防御还挨了 {hits} 次打：格挡没有生效（04 §14 红线）");
+            Check(_player.Health.Current == _player.Health.Max, "玩家掉了血：格挡/弹开没有兜住伤害");
+        }
     }
 
     private void AddFloor()

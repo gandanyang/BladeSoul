@@ -20,6 +20,12 @@ public partial class DifficultyProfile : Resource
     /// <summary>从其他动作取消进入防御后的硬直帧数，此期间无法弹开（但**仍然能格挡**）。</summary>
     [Export] public int GuardCancelLockFrames { get; set; } = 4;
 
+    /// <summary>
+    /// 松开防御后多少帧内**再次按下**，一律按"取消进入"处理（02 §8）。
+    /// 这是"连打防御惩罚"在**中立态**上的那一半——原来的实现只覆盖了从攻击/受击取消。
+    /// </summary>
+    [Export] public int GuardReentryLockFrames { get; set; } = 8;
+
     /// <summary>真一闪：敌人距离命中还有几帧以内按攻击算一闪。</summary>
     [Export] public int IssenWindowFrames { get; set; } = 6;
 

@@ -44,9 +44,15 @@ try {
         if ($LASTEXITCODE -ne 0) { throw "combat smoke test failed (exit $LASTEXITCODE)" }
 
         # T6/T7：会还手的假人 + 弹开窗，端到端跑一遍（480 帧 ≈ 4 次攻防）。
-        Write-Host '--- 5/5 deflect training test (headless engine) ---' -ForegroundColor Cyan
+        Write-Host '--- 5/6 deflect training test (headless engine) ---' -ForegroundColor Cyan
         & $godot --headless --path $root res://scenes/tests/DeflectTraining.tscn
         if ($LASTEXITCODE -ne 0) { throw "deflect training test failed (exit $LASTEXITCODE)" }
+
+        # T10：同一套链路，把机器人换成"完全不看时机的连打"。
+        # 期望拿不到弹开收益，但也一次都不挨打（惩罚只惩罚效率，不惩罚存活）。
+        Write-Host '--- 6/6 guard-spam contrast (headless engine) ---' -ForegroundColor Cyan
+        & $godot --headless --path $root res://scenes/tests/GuardSpam.tscn
+        if ($LASTEXITCODE -ne 0) { throw "guard-spam contrast failed (exit $LASTEXITCODE)" }
     }
 
     Write-Host 'ALL CHECKS PASSED' -ForegroundColor Green

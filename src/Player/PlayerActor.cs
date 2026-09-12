@@ -39,6 +39,14 @@ public partial class PlayerActor : CombatActor, IGuardInput
 	private BlockoutRig _rig = null!;
 	private readonly PlayerInputBuffer _buffer = new();
 
+	/// <summary>本地帧号，只给"快速重按防御"判定用（02 §8）。</summary>
+	private int _localFrame;
+
+	/// <summary>上一次松开防御的帧号；从未松过为 -1。</summary>
+	private int _lastGuardReleaseFrame = -1;
+
+	private bool _guardHeldLastFrame;
+
 	public int InputBufferFrames => Difficulty?.InputBufferFrames ?? 8;
 
 	public override string InputBufferDebug
@@ -136,7 +144,14 @@ public partial class PlayerActor : CombatActor, IGuardInput
 	protected override void PollLocalInput()
 	{
 		SyncCameraRig();
+		_localFrame++;
 		_buffer.Tick();
+
+		// 记录"松开防御"的那一帧，供快速重按判定使用。
+		bool guardHeld = Input.IsActionPressed("guard");
+		if (_guardHeldLastFrame && !guardHeld)
+			_lastGuardReleaseFrame = _localFrame;
+		_guardHeldLastFrame = guardHeld;
 
 		if (Input.IsActionJustPressed("attack"))
 			_buffer.Push(PlayerAction.Attack);
@@ -187,6 +202,14 @@ public partial class PlayerActor : CombatActor, IGuardInput
 			default:
 				source = GuardEntrySource.Neutral;
 				break;
+		}
+
+		// 02 §8：松开防御后马上又按下 → 也算"取消进入"，付同样的硬直。
+		// 这条堵的是"从站立反复点按防御 = 每次都能重新开窗"的漏洞。
+		if (source != GuardEntrySource.Cancel
+			&& GuardReentry.IsQuickReentry(_localFrame, _lastGuardReleaseFrame, Difficulty?.GuardReentryLockFrames ?? 0))
+		{
+			source = GuardEntrySource.Cancel;
 		}
 
 		GuardState guard = Machine.Get<GuardState>();

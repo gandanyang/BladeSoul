@@ -8,6 +8,7 @@ Id = "migoto"
 DisplayName = "見習"
 DeflectWindowFrames = 16
 GuardCancelLockFrames = 2
+GuardReentryLockFrames = 12
 IssenWindowFrames = 12
 IssenSafeWindowFrames = 12
 InputBufferFrames = 12

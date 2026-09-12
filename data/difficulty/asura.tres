@@ -8,6 +8,7 @@ Id = "asura"
 DisplayName = "修罗"
 DeflectWindowFrames = 6
 GuardCancelLockFrames = 4
+GuardReentryLockFrames = 6
 IssenWindowFrames = 6
 IssenSafeWindowFrames = 4
 InputBufferFrames = 6

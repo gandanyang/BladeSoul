@@ -8,6 +8,7 @@ Id = "kenshi"
 DisplayName = "剑客"
 DeflectWindowFrames = 12
 GuardCancelLockFrames = 3
+GuardReentryLockFrames = 10
 IssenWindowFrames = 9
 IssenSafeWindowFrames = 8
 InputBufferFrames = 10

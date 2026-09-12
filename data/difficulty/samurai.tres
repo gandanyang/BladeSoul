@@ -8,6 +8,7 @@ Id = "samurai"
 DisplayName = "武士"
 DeflectWindowFrames = 9
 GuardCancelLockFrames = 4
+GuardReentryLockFrames = 8
 IssenWindowFrames = 6
 IssenSafeWindowFrames = 6
 InputBufferFrames = 8
