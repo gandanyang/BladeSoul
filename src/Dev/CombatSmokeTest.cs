@@ -126,6 +126,30 @@ public partial class CombatSmokeTest : Node3D
         Check(travelled > 1.0f, $"按住 move_right 30 帧只走了 {travelled:F2} m：移动没有生效");
         Check(yawDriftDeg < 5f, $"移动时朝向仍在不停转（后 15 帧漂移 {yawDriftDeg:F1} 度）：相机跟随身体转，导致原地打转");
 
+        // ── 死亡 → 自动重生 ──
+        // 会死、又能反复死的靶子，是"击杀流程"（吸魂/忍杀/掉落）的试验台。
+        var respawn = Load<TrainingDummy>("res://scenes/actors/RespawnDummy.tscn");
+        respawn.Name = "RespawnDummy";
+        respawn.Position = new Vector3(4f, 0.1f, -2f);
+        AddChild(respawn);
+        await WaitPhysicsFrames(10);
+
+        Check(!respawn.IsDead && respawn.Health.Current == respawn.Health.Max,
+            "重生假人初始状态不对");
+
+        respawn.Health.Apply(respawn.Health.Max + 1);
+        respawn.Die();
+        Check(respawn.IsDead, "重生假人没有被杀死（Invincible 或 Die 覆写出问题）");
+
+        await WaitPhysicsFrames(respawn.RespawnDelayFrames + 15);
+
+        GD.Print($"[冒烟] 重生假人：死后 {respawn.RespawnDelayFrames} 帧重生，次数 {respawn.RespawnCount}，血量 {respawn.Health.Current}/{respawn.Health.Max}");
+
+        Check(!respawn.IsDead, "重生假人没有在等待期结束后复活");
+        Check(respawn.RespawnCount == 1, $"重生计数应为 1，实际 {respawn.RespawnCount}（可能重生逻辑跑了多次）");
+        Check(respawn.Health.Current == respawn.Health.Max, $"重生后血量没回满：{respawn.Health.Current}/{respawn.Health.Max}");
+        Check(respawn.Posture.Current == 0, $"重生后体干没清零：{respawn.Posture.Current}");
+
         Report();
     }
 

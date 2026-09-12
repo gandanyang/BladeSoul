@@ -1,0 +1,50 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://src/Enemies/TrainingDummy.cs" id="1_dummy"]
+[ext_resource type="Resource" path="res://data/actors/training_dummy.tres" id="2_stats"]
+[ext_resource type="Script" path="res://src/Combat/Hitbox.cs" id="3_hitbox"]
+[ext_resource type="Script" path="res://src/Combat/Hurtbox.cs" id="4_hurtbox"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
+radius = 0.4
+height = 1.8
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_hurt"]
+radius = 0.5
+height = 1.85
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_hit"]
+size = Vector3(1.4, 1.6, 1.8)
+
+[node name="RespawnDummy" type="CharacterBody3D"]
+collision_layer = 4
+collision_mask = 3
+script = ExtResource("1_dummy")
+ActorId = 102
+DebugName = "重生假人"
+Stats = ExtResource("2_stats")
+Invincible = false
+AutoRespawn = true
+RespawnDelayFrames = 120
+BodyColor = Color(0.3, 0.36, 0.3, 1)
+AccentColor = Color(0.16, 0.2, 0.16, 1)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+shape = SubResource("CapsuleShape3D_body")
+
+[node name="Hurtbox" type="Area3D" parent="."]
+collision_layer = 16
+collision_mask = 0
+monitoring = false
+script = ExtResource("4_hurtbox")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Hurtbox"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+shape = SubResource("CapsuleShape3D_hurt")
+
+[node name="Hitbox" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.0, -1.0)
+script = ExtResource("3_hitbox")
+Shape = SubResource("BoxShape3D_hit")
+TargetMask = 8

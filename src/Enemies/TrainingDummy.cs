@@ -16,7 +16,25 @@ public partial class TrainingDummy : CombatActor
 	/// <summary>打不死（练连段用）。关掉它就是普通敌人。</summary>
 	[Export] public bool Invincible { get; set; } = true;
 
+	/// <summary>
+	/// 死后自动原地重生。
+	/// **它是"击杀流程"的试验台**：吸魂、忍杀、掉落这些东西都需要一个会死、
+	/// 又能反复死的靶子，否则每验证一次都要重启场景。
+	/// </summary>
+	[Export] public bool AutoRespawn { get; set; }
+
+	/// <summary>死亡到重生的等待帧数（默认 120 帧 = 2 秒）。</summary>
+	[Export] public int RespawnDelayFrames { get; set; } = 120;
+
 	private BlockoutRig _rig = null!;
+	private Vector3 _spawnPosition;
+	private Vector3 _spawnRotation;
+	private int _respawnFramesLeft;
+
+	/// <summary>已经重生过几次（调试与测试用）。</summary>
+	public int RespawnCount { get; private set; }
+
+	public bool IsWaitingToRespawn => IsDead && AutoRespawn;
 
 	protected override void OnActorReady()
 	{
@@ -25,6 +43,9 @@ public partial class TrainingDummy : CombatActor
 		AddChild(_rig);
 
 		PrimaryHitbox = GetNodeOrNull<Hitbox>("Hitbox");
+
+		_spawnPosition = GlobalPosition;
+		_spawnRotation = Rotation;
 	}
 
 	protected override void OnTickVisual(float dt, float speed01)
@@ -53,5 +74,46 @@ public partial class TrainingDummy : CombatActor
 		}
 
 		base.Die();
+	}
+
+	/// <summary>
+	/// 死掉之后基类会直接 return（<see cref="CombatActor._PhysicsProcess"/> 在 IsDead 时早退），
+	/// 所以重生计时必须在**基类跑完之后**自己做。
+	/// </summary>
+	public override void _PhysicsProcess(double delta)
+	{
+		base._PhysicsProcess(delta);
+
+		if (!IsWaitingToRespawn)
+			return;
+
+		_respawnFramesLeft--;
+		if (_respawnFramesLeft <= 0)
+			Respawn();
+	}
+
+	protected override void OnDeath()
+	{
+		if (!AutoRespawn)
+			return;
+
+		_respawnFramesLeft = Mathf.Max(1, RespawnDelayFrames);
+		_rig.Visible = false;
+	}
+
+	private void Respawn()
+	{
+		GlobalPosition = _spawnPosition;
+		Rotation = _spawnRotation;
+
+		Health.Heal(Health.Max);
+		Posture.Reset();
+
+		IsDead = false;
+		_rig.Visible = true;
+		_respawnFramesLeft = 0;
+		RespawnCount++;
+
+		Machine.ForceChange<Combat.States.IdleState>();
 	}
 }
