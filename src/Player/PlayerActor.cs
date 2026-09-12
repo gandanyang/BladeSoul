@@ -204,12 +204,12 @@ public partial class PlayerActor : CombatActor, IGuardInput
 				break;
 		}
 
-		// 02 §8：松开防御后马上又按下 → 也算"取消进入"，付同样的硬直。
-		// 这条堵的是"从站立反复点按防御 = 每次都能重新开窗"的漏洞。
+		// 02 §8：松开防御后马上又按下 → 这一段防御**直接不开窗**（仍然格挡）。
+		// 只"晚开 4 帧"是不够的：按住 ≥5 帧时前后窗口会首尾相接，等于永远开着。
 		if (source != GuardEntrySource.Cancel
 			&& GuardReentry.IsQuickReentry(_localFrame, _lastGuardReleaseFrame, Difficulty?.GuardReentryLockFrames ?? 0))
 		{
-			source = GuardEntrySource.Cancel;
+			source = GuardEntrySource.QuickReentry;
 		}
 
 		GuardState guard = Machine.Get<GuardState>();

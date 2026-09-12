@@ -16,6 +16,21 @@ public enum GuardEntrySource
 	/// 惩罚只惩罚效率——这几帧玩家**不会挨打**，只是弹不开。
 	/// </summary>
 	Cancel = 1,
+
+	/// <summary>
+	/// **快速重按**：松开防御后马上又按下（间隔 &lt; <c>GuardReentryLockFrames</c>）。
+	///
+	/// 这一段防御**干脆不开窗**——但**仍然格挡**，玩家不会因此挨打。
+	///
+	/// 为什么不是"像 <see cref="Cancel"/> 那样晚开 4 帧"：
+	/// 晚开只是把窗口往后挪，而窗口本身有 9 帧。
+	/// 只要一次按住 ≥5 帧（周期 ≤13 帧），前后两个窗口就会首尾相接，
+	/// 等于**窗口永远开着**——无头实测：按 5 松 1 的连打能打出 6/6 弹开，
+	/// 和看准时机的按一模一样（数据见 02 §8）。
+	///
+	/// 所以对付连打必须让窗口**根本不开**，而不是"晚点开"。
+	/// </summary>
+	QuickReentry = 2,
 }
 
 /// <summary>
@@ -48,7 +63,15 @@ public sealed class GuardWindowState
 	public void Begin(GuardEntrySource source, int guardCancelLockFrames)
 	{
 		Source = source;
-		CancelLockFrames = source == GuardEntrySource.Cancel ? Math.Max(0, guardCancelLockFrames) : 0;
+
+		CancelLockFrames = source switch
+		{
+			// int.MaxValue 表示"这一段防御永远不到开窗的那一帧"。
+			GuardEntrySource.QuickReentry => int.MaxValue,
+			GuardEntrySource.Cancel => Math.Max(0, guardCancelLockFrames),
+			_ => 0,
+		};
+
 		_framesSinceEntry = 0;
 	}
 

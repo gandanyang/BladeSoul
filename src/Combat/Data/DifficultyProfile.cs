@@ -21,8 +21,11 @@ public partial class DifficultyProfile : Resource
     [Export] public int GuardCancelLockFrames { get; set; } = 4;
 
     /// <summary>
-    /// 松开防御后多少帧内**再次按下**，一律按"取消进入"处理（02 §8）。
-    /// 这是"连打防御惩罚"在**中立态**上的那一半——原来的实现只覆盖了从攻击/受击取消。
+    /// 松开防御后多少帧内**再次按下**，这一段防御**直接不开窗**（仍然格挡，02 §8）。
+    ///
+    /// **四档难度都设成 8，它不是难度旋钮，是输入语义规则。**
+    /// 它必须 ≤ 二连斩的重按间隔（约 9 帧），否则玩家连"接第二刀"都做不到——
+    /// 那不是难度，那是坏掉的输入。反连打的真正主力是「危」攻击（02 §3）。
     /// </summary>
     [Export] public int GuardReentryLockFrames { get; set; } = 8;
 

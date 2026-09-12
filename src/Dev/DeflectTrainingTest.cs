@@ -46,6 +46,17 @@ public partial class DeflectTrainingTest : Node3D
     /// </summary>
     [Export] public bool SpamMode { get; set; }
 
+    /// <summary>
+    /// 连打模式一次按住几帧。默认 **5**——这不是随便取的：
+    /// T12 的节奏扫描发现"按 5 松 1"这类**按住较久**的连打最危险
+    /// （周期 ≤13 帧时前后两个窗口首尾相接，等于窗口永远开着），
+    /// 所以回归测试必须打在最坏的那一档上，而不是更弱的"按 2 松 2"。
+    /// </summary>
+    [Export] public int SpamPressFrames { get; set; } = 5;
+
+    /// <summary>连打模式一次松开几帧。</summary>
+    [Export] public int SpamReleaseFrames { get; set; } = 1;
+
     private readonly List<string> _failures = new();
     private readonly List<HitEvent> _contacts = new();
 
@@ -89,13 +100,16 @@ public partial class DeflectTrainingTest : Node3D
 
             if (SpamMode)
             {
-                // 2 帧按 / 2 帧松，周而复始，刻意与假人的出招节奏错开。
-                if (frame % 4 == 0)
+                // 按 N 帧 / 松 M 帧，周而复始，刻意与假人的出招节奏错开。
+                int cycle = Mathf.Max(1, SpamPressFrames + SpamReleaseFrames);
+                bool wantHeld = frame % cycle < SpamPressFrames;
+
+                if (wantHeld && !guardHeld)
                 {
                     Input.ActionPress("guard");
                     guardHeld = true;
                 }
-                else if (frame % 4 == 2)
+                else if (!wantHeld && guardHeld)
                 {
                     Input.ActionRelease("guard");
                     guardHeld = false;
