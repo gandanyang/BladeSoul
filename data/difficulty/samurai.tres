@@ -26,4 +26,7 @@ PlayerDamageTakenScale = 1.0
 ReviveCount = 1
 ShowPerilousCue = true
 HalfAutoGuard = false
+HalfAutoGuardLeadFrames = 2
+HalfAutoGuardWindowFrames = 600
+HalfAutoGuardMaxTriggers = 3
 ShowParryRhythm = false

@@ -112,6 +112,27 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 		}
 	}
 
+	// ── T37 缺口②③：破防表现 与 半自动防御 ─────────────────────
+
+	/// <summary>
+	/// 破防累计次数（本场战斗）。**自检靠它证明基类那个空钩子真的被覆写了**——
+	/// 只看"状态机进了 StaggerState"证明不了这件事（敌人也是那么进的）。
+	/// </summary>
+	public int GuardBreakCount { get; private set; }
+
+	/// <summary>破防的后仰姿态还在放（给截图与自检用）。</summary>
+	public bool IsShowingGuardBreak => _guardBreakShowFrames > 0;
+
+	/// <summary>半自动防御累计触发了几次（跨额度窗口，留给自检看）。</summary>
+	public int HalfAutoGuardTriggerCount { get; private set; }
+
+	/// <summary>当前额度窗口内已经用掉几次。</summary>
+	public int HalfAutoGuardUsedInWindow => _autoGuardUsedInWindow;
+
+	private int _guardBreakShowFrames;
+	private int _autoGuardWindowStartFrame = int.MinValue;
+	private int _autoGuardUsedInWindow;
+
 	protected override void OnActorReady()
 	{
 		// 敌人（含挥砍假人）靠这个组找玩家——和 EnemyController 用的是同一个约定。
@@ -155,6 +176,9 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 		// 带满次数进场（BOSS 战前 / 死亡重开后由 T14 调 RefillHealCharges）。
 		RefillHealCharges();
 		RefillRevives();
+
+		// T37 缺口①：难度档的体干恢复旋钮要在这里接上，否则四档手感完全一样。
+		ApplyDifficulty();
 
 		if (Attacks is not null)
 			Machine.Get<AttackState>().Configure(Attacks.BuildLightCombo());
@@ -222,6 +246,10 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 		if (_reviveInvulnerableFramesLeft > 0)
 			_reviveInvulnerableFramesLeft--;
 
+		// 破防后仰同理：它要盖住 StaggerState 的前半段。
+		if (_guardBreakShowFrames > 0)
+			_guardBreakShowFrames--;
+
 		// 记录"松开防御"的那一帧，供快速重按判定使用。
 		bool guardHeld = Input.IsActionPressed("guard");
 		if (_guardHeldLastFrame && !guardHeld)
@@ -246,6 +274,10 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 		TryEnterHeal();
 		TryEnterDodge();
 		TryEnterGuard();
+
+		// 半自动防御（T37 缺口③）**必须排在手动之后**：
+		// 手动弹开已经成的时候不许它抢功、更不许扣额度（见 TryHalfAutoGuard）。
+		TryHalfAutoGuard();
 	}
 
 	/// <summary>
@@ -329,18 +361,149 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 			source = GuardEntrySource.QuickReentry;
 		}
 
+		EnterGuard(source);
+	}
+
+	/// <summary>
+	/// 真正切进 <see cref="GuardState"/>。**手动与半自动防御共用这一条路**
+	/// （T37 实现纪律：不许另写一套"更宽松的窗口"，否则两套规则日后必然打架）。
+	///
+	/// 弹开窗只能由 <see cref="CombatTuning"/> 合成（08 §3 P1-3 红线）。
+	/// 缺难度档时退化到最窄的可玩窗口（下限 4 帧），不会凭空变强。
+	/// </summary>
+	private void EnterGuard(GuardEntrySource source)
+	{
 		GuardState guard = Machine.Get<GuardState>();
 		guard.EntrySource = source;
 		guard.CancelLockFrames = Difficulty?.GuardCancelLockFrames ?? 0;
-
-		// 弹开窗只能由 CombatTuning 合成（08 §3 P1-3 红线）。
-		// 缺难度档时退化到最窄的可玩窗口（下限 4 帧），不会凭空变强。
 		guard.DeflectWindowFrames = CombatTuning.ResolveDeflectWindowFrames(Difficulty?.DeflectWindowFrames ?? 0);
-
 		guard.MoveScale = Stats?.GuardMoveScale ?? 1f;
 
 		Machine.ForceChange<GuardState>();
 	}
+
+	/// <summary>
+	/// 半自动防御（T37 缺口③ / 05 §126-128）。**只有最简单档（見習）开**，语义照抄规格：
+	///
+	/// - 触发条件：**按住防御**，且**手动弹开还没成**，敌人这一招**距判定还有 ≤2 帧**；
+	/// - **只对「一般攻击」生效，对「危」攻击一律不生效**；
+	/// - **每 10 秒最多 3 次**——它不是无敌，是把"精准时机"换成"资源管理"。
+	///
+	/// 实现方式刻意选"**在命中前 2 帧重进一次 GuardState**"：
+	/// 走的是 <see cref="EnterGuard"/>（= 手动弹开那条路），窗口宽度照旧由
+	/// <see cref="CombatTuning"/> 合成，裁决器那边完全不知道有这回事。
+	/// 重进时用 <see cref="GuardEntrySource.Neutral"/>，所以不付取消硬直、当帧之后立即开窗。
+	/// </summary>
+	private void TryHalfAutoGuard()
+	{
+		if (IsDead || Difficulty is not { HalfAutoGuard: true })
+			return;
+
+		// 必须"按住防御"——半自动防的是"按早了"，不是"没按"。
+		if (!Input.IsActionPressed("guard"))
+			return;
+
+		if (Machine.Current is DeflectState or IssenState or ReviveState)
+			return;
+
+		// 喝血的饮用段不能被任何东西取消（T18 承诺"永远能喝完"），半自动也不例外。
+		if (Machine.Current is HealState { Phase: HealPhase.Drink })
+			return;
+
+		// 手动弹开已经成了：不抢功，也不扣额度。
+		if (DeflectWindowFramesLeft > 0)
+			return;
+
+		if (!FindThreat(out ThreatPhase phase, out int framesUntilActive, out bool perilous))
+			return;
+
+		// 只在"还没打出来"时给，且必须已经进入提前量之内。
+		if (phase != ThreatPhase.Windup)
+			return;
+		if (framesUntilActive > Difficulty.HalfAutoGuardLeadFrames)
+			return;
+
+		// 05 §128：危攻击一律不生效——它该吃危的那条规则（弹开或闪避）。
+		if (perilous)
+			return;
+
+		if (!TryConsumeHalfAutoGuardCharge())
+			return;
+
+		HalfAutoGuardTriggerCount++;
+		EnterGuard(GuardEntrySource.Neutral);
+	}
+
+	/// <summary>
+	/// 扣一次半自动防御的额度。规格是"每 10 秒最多 3 次"，
+	/// 所以这里是一个**固定窗口**：窗口内用完就不给了，等下一个窗口。
+	/// 阈值全部来自难度档（T37 硬约束：2 帧 / 3 次 / 10 秒不许写死在 C# 里）。
+	/// </summary>
+	private bool TryConsumeHalfAutoGuardCharge()
+	{
+		int windowFrames = Mathf.Max(1, Difficulty!.HalfAutoGuardWindowFrames);
+		int maxTriggers = Mathf.Max(0, Difficulty.HalfAutoGuardMaxTriggers);
+
+		bool windowExpired = _autoGuardWindowStartFrame == int.MinValue
+			|| _localFrame - _autoGuardWindowStartFrame >= windowFrames;
+
+		if (windowExpired)
+		{
+			_autoGuardWindowStartFrame = _localFrame;
+			_autoGuardUsedInWindow = 0;
+		}
+
+		if (_autoGuardUsedInWindow >= maxTriggers)
+			return false;
+
+		_autoGuardUsedInWindow++;
+		return true;
+	}
+
+	// ── T37 缺口①②：接上难度旋钮 / 破防表现 ────────────────────
+
+	/// <summary>
+	/// 把难度档里"与玩家体干有关"的旋钮写进玩家的表（T37 缺口①）。
+	///
+	/// 为什么要有这个方法：<c>DifficultyProfile.PlayerPostureRegenScale</c> 四档都填了值，
+	/// 但**代码里没有任何地方读它**，于是"给手残玩家更快回架势"（05）这条可及性杠杆是空的。
+	/// 照既有用法——**由持有 <c>Difficulty</c> 的那一侧写入**（和
+	/// <c>GuardState.CancelLockFrames</c> / <c>DodgeState.InvulnerableFrames</c> 同一个手法）。
+	/// </summary>
+	public void ApplyDifficulty()
+	{
+		Posture.RegenScale = Difficulty?.PlayerPostureRegenScale ?? 1f;
+	}
+
+	/// <summary>
+	/// 玩家破防（T37 缺口②）。基类是空方法，<c>TrainingDummy</c> 覆写了、**玩家没有**——
+	/// 所以破防时只有状态机进了 50 帧硬直，人物姿态上什么都没发生，
+	/// 玩家只会觉得"我卡住了"，而不知道为什么。
+	///
+	/// 这里做两件事：记一个**可观测**的标记（自检证明这个钩子真的被调过），
+	/// 以及放一个**明显区别于普通格挡的姿态**（比普通受击更长更猛的后仰）。
+	/// 真正的"破防姿势"要等 T38 补动画，灰盒期复用受击通道是刻意的。
+	/// </summary>
+	protected override void OnPostureBroken()
+	{
+		GuardBreakCount++;
+		_guardBreakShowFrames = GuardBreakShowFrames;
+		_rig?.PlayGuardBreak();
+
+		// ★ 必须清架势，和 TrainingDummy / AttackingDummy 的 OnPostureBroken 保持一致。
+		// 不清的后果是**死亡螺旋**：PostureMeter.Tick 在 IsBroken 时直接 return（不回复），
+		// 于是玩家被破防一次之后架势永远停在满值，之后每次格挡都立刻再破防，
+		// 除了死一次（复活流程里才有 Reset）没有任何出路。
+		Posture.Reset();
+	}
+
+	/// <summary>破防后仰持续多少帧（≈50 帧硬直的前半段，和 <c>GuardBreakStunFrames</c> 同量级）。</summary>
+	public const int GuardBreakShowFrames = 34;
+
+	/// <summary>半自动防御的剩余次数（给 HUD 的弱提示）。非見習档恒 0。</summary>
+	public override int HalfAutoGuardChargesLeftForUi => Difficulty is { HalfAutoGuard: true }
+		? Mathf.Max(0, Difficulty.HalfAutoGuardMaxTriggers - _autoGuardUsedInWindow)
+		: 0;
 
 	/// <summary>攻击后摇的取消窗开了没有（02 §1：轻斩壹从后摇第 6 帧起可被防御取消）。</summary>
 	private static bool IsAttackCancelWindowOpen(AttackState attack) =>
@@ -576,6 +739,15 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 		RefillHealCharges();
 		RefillRevives();
 
+		// T37：破防标记与半自动额度都是**本场**的量，重开要清干净；
+		// 难度旋钮也要重新写一遍（战斗中途换档的场景由这里兜住）。
+		GuardBreakCount = 0;
+		_guardBreakShowFrames = 0;
+		_autoGuardWindowStartFrame = int.MinValue;
+		_autoGuardUsedInWindow = 0;
+		HalfAutoGuardTriggerCount = 0;
+		ApplyDifficulty();
+
 		base.ResetForBattle();
 	}
 
@@ -631,7 +803,7 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 		// 连锁窗口已经过去了 → 计数归零（下一次一闪重新从第 1 连算起）。
 		_chainIssenCount = 0;
 
-		if (!FindThreat(out ThreatPhase phase, out int framesUntilActive))
+		if (!FindThreat(out ThreatPhase phase, out int framesUntilActive, out _))
 		{
 			LastIssenIntent = IssenIntent.NotAnAttempt;
 			return false;
@@ -674,10 +846,11 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 	///
 	/// 同时挑**最近**的那一个：多个敌人一起挥刀时，一闪应该照顾眼前这个。
 	/// </summary>
-	private bool FindThreat(out ThreatPhase phase, out int framesUntilActive)
+	private bool FindThreat(out ThreatPhase phase, out int framesUntilActive, out bool perilous)
 	{
 		phase = ThreatPhase.None;
 		framesUntilActive = 0;
+		perilous = false;
 
 		float best = float.MaxValue;
 
@@ -715,6 +888,9 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 			best = distanceSquared;
 			phase = candidate;
 			framesUntilActive = timing.ActiveStart - frame;
+
+			// T37 缺口③：半自动防御要靠它把「危」排除掉（05 §128）。
+			perilous = other.IsIncomingAttackPerilous;
 		}
 
 		return phase != ThreatPhase.None;

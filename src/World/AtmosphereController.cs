@@ -16,6 +16,12 @@ public partial class AtmosphereController : Node3D
 {
 	public const string LanternGroup = "lantern";
 
+	/// <summary>室内灯笼的组（T40）。**与室外灯笼分开**，好让室外灯照不进屋里（见分层 cull mask）。</summary>
+	public const string IndoorLanternGroup = "lantern_indoor";
+
+	/// <summary>天光开口的组（T40）。锚点上方必须真的开着一个洞（关卡里用 CSG 减出来）。</summary>
+	public const string SkylightGroup = "skylight";
+
 	[Export] public AtmosphereProfile? Profile { get; set; }
 
 	/// <summary>没有摄像机时雨盒挂在哪里（正常情况每帧跟随 Camera3D）。</summary>
@@ -25,6 +31,7 @@ public partial class AtmosphereController : Node3D
 	private Environment? _environment;
 	private GpuParticles3D? _rain;
 	private readonly List<OmniLight3D> _lanternLights = new();
+	private readonly List<OmniLight3D> _skylightLights = new();
 
 	/// <summary>雾当前是否生效（自检与调试面板用）。</summary>
 	public bool FogActive { get; private set; }
@@ -37,6 +44,12 @@ public partial class AtmosphereController : Node3D
 
 	/// <summary>因为超过 <see cref="AtmosphereProfile.MaxLanterns"/> 而没有点亮的数量。</summary>
 	public int LanternsSkipped { get; private set; }
+
+	/// <summary>实际点亮的天光数（T40）。</summary>
+	public int SkylightCount => _skylightLights.Count;
+
+	/// <summary>因为超过 <see cref="AtmosphereProfile.MaxSkylights"/> 而没有点亮的天光数。</summary>
+	public int SkylightsSkipped { get; private set; }
 
 	/// <summary>雨盒当前的世界位置（自检靠它证明"跟着摄像机"）。</summary>
 	public Vector3 RainAnchor => _rain?.GlobalPosition ?? FallbackRainAnchor;
@@ -55,6 +68,7 @@ public partial class AtmosphereController : Node3D
 		ApplyColorGrade();
 		BuildRain();
 		BuildLanterns();
+		BuildSkylights();
 		ApplyDegradation();
 	}
 
@@ -216,10 +230,16 @@ public partial class AtmosphereController : Node3D
 		foreach (OmniLight3D light in _lanternLights)
 			light.QueueFree();
 
+		foreach (OmniLight3D light in _skylightLights)
+			light.QueueFree();
+
 		_lanternLights.Clear();
+		_skylightLights.Clear();
 		LanternsSkipped = 0;
+		SkylightsSkipped = 0;
 
 		BuildLanterns();
+		BuildSkylights();
 	}
 
 	private void BuildLanterns()
@@ -229,7 +249,7 @@ public partial class AtmosphereController : Node3D
 
 		int lit = 0;
 
-		foreach (Node node in GetTree().GetNodesInGroup(LanternGroup))
+		foreach (Node node in LanternAnchors())
 		{
 			if (node is not Node3D lantern)
 				continue;
@@ -241,13 +261,19 @@ public partial class AtmosphereController : Node3D
 				continue;
 			}
 
+			// T40 分层：室外灯笼照不进屋里。
+			// 灯笼是零阴影的（省性能），所以挡住穿墙只能靠 cull mask：
+			// 室内几何只挂在 InteriorLayer 上，室外灯笼的 mask 不含它 → 照不到。
+			bool indoor = lantern.IsInGroup(IndoorLanternGroup);
+
 			var light = new OmniLight3D
 			{
-				Name = "LanternLight",
+				Name = indoor ? "IndoorLanternLight" : "LanternLight",
 				LightColor = profile.LanternColor,
 				LightEnergy = profile.LanternEnergy,
 				OmniRange = profile.LanternRange,
 				ShadowEnabled = false,   // 灯笼不投影：省性能，而且雨夜里影子会乱
+				LightCullMask = indoor ? profile.IndoorLanternCullMask : profile.OutdoorLanternCullMask,
 			};
 
 			lantern.AddChild(light);
@@ -275,6 +301,73 @@ public partial class AtmosphereController : Node3D
 		if (LanternsSkipped > 0)
 			GD.Print($"[氛围] 灯笼 {lit} 盏点亮，{LanternsSkipped} 盏因为超过上限" +
 					 $"（{profile.MaxLanterns}）没有点亮——暖色＝注意力，不能多给");
+	}
+
+	/// <summary>
+	/// 灯笼锚点 = 室外（<see cref="LanternGroup"/>）＋ 室内（<see cref="IndoorLanternGroup"/>）。
+	///
+	/// **两组都要点**：室内锚点写在另一组里是为了让 cull mask 能按室内外分开，
+	/// 但"分组"不等于"分家"——只遍历其中一组的话，另一组的锚点等于白写。
+	/// </summary>
+	private Godot.Collections.Array<Node> LanternAnchors()
+	{
+		Godot.Collections.Array<Node> all = GetTree().GetNodesInGroup(LanternGroup);
+
+		foreach (Node node in GetTree().GetNodesInGroup(IndoorLanternGroup))
+		{
+			if (!all.Contains(node))
+				all.Add(node);
+		}
+
+		return all;
+	}
+
+	/// <summary>
+	/// 室内天光（T40）。**冷色，而且挂在屋顶开口处**——这两条都是纪律：
+	///
+	/// - 冷色：10 §1 只允许灯笼是暖色，所以室内补光不能是暖的；
+	/// - 挂在开口处：它不能是"凭空一盏冷色天花板灯"（那读起来是电灯），
+	///   所以每个锚点上方**真的开着一个洞**（关卡里用 CSG 减出来），
+	///   光源就摆在洞口往下打，看到的是光柱而不是灯具。
+	///
+	/// 与灯笼的区别是**它投影**（ShadowEnabled = true）：天光得被柱子和人挡出影子，
+	/// 否则"从上面下来"这件事读不出来。开口数量有上限，所以这点开销是可控的。
+	/// </summary>
+	private void BuildSkylights()
+	{
+		if (Profile is not { } profile)
+			return;
+
+		int lit = 0;
+
+		foreach (Node node in GetTree().GetNodesInGroup(SkylightGroup))
+		{
+			if (node is not Node3D anchor)
+				continue;
+
+			if (lit >= profile.MaxSkylights)
+			{
+				SkylightsSkipped++;
+				continue;
+			}
+
+			var light = new OmniLight3D
+			{
+				Name = "Skylight",
+				LightColor = profile.SkylightColor,
+				LightEnergy = profile.SkylightEnergy,
+				OmniRange = profile.SkylightRange,
+				ShadowEnabled = true,
+				LightCullMask = (uint)(profile.InteriorLayer | 1),
+			};
+
+			anchor.AddChild(light);
+			_skylightLights.Add(light);
+			lit++;
+		}
+
+		if (lit > 0)
+			GD.Print($"[氛围] 天光开口 {lit} 处（冷色——暖色仍然只属于灯笼）");
 	}
 
 	// ── 降级（07 §7 的顺序）────────────────────────────────────

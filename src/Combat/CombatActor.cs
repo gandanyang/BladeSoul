@@ -494,6 +494,20 @@ public abstract partial class CombatActor : CharacterBody3D, ICombatActorDebug, 
 
 	int ICombatActorDebug.HealChargesLeft => HealChargesLeftForUi;
 
+	/// <summary>
+	/// 半自动防御的剩余次数（T37 缺口③）。**只给 UI 读**——只有玩家有，其它单位恒 0。
+	/// 与 <see cref="HealChargesLeftForUi"/> 同一个理由（显式接口实现没法被子类覆盖）。
+	/// </summary>
+	public virtual int HalfAutoGuardChargesLeftForUi => 0;
+
+	int ICombatActorDebug.HalfAutoGuardChargesLeft => HalfAutoGuardChargesLeftForUi;
+
+	/// <summary>
+	/// 当前正在打出来的这一招是不是「危」。
+	/// T37 的半自动防御只对一般攻击生效（05 §128），靠它把危排除掉。
+	/// </summary>
+	public bool IsIncomingAttackPerilous => _perilousCue.IsShowing;
+
 	public string StateName => Machine?.Current?.GetType().Name ?? "None";
 	public int StateFrame => Machine?.Current?.Frame ?? 0;
 	public int StateTotalFrames => Machine?.Current?.TotalFrames ?? 0;

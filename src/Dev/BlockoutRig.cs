@@ -22,8 +22,18 @@ public partial class BlockoutRig : Node3D
 	private float _issenElapsed = -1f;
 	private float _hitReactElapsed = -1f;
 	private float _hitReactStrength;
+
+	/// <summary>受击反应的时长倍率。破防用更长的一档，好和普通格挡一眼分开（T37）。</summary>
+	private float _hitReactDurationScale = 1f;
+
 	private const float AttackDuration = 0.5f;
 	private const float HitReactDuration = 0.22f;
+
+	/// <summary>破防后仰的时长倍率（T37 缺口②）：普通受击 0.22s → 破防 0.46s。</summary>
+	private const float GuardBreakDurationScale = 2.1f;
+
+	/// <summary>破防后仰的强度：比普通受击更猛（普通值域 0~2）。</summary>
+	private const float GuardBreakStrength = 1.9f;
 
 	/// <summary>一闪斜斩本身的时长（秒）。比普通攻击短得多——快到你来不及看清。</summary>
 	private const float IssenSlashDuration = 0.16f;
@@ -95,6 +105,23 @@ public partial class BlockoutRig : Node3D
 	{
 		_hitReactElapsed = 0f;
 		_hitReactStrength = Mathf.Clamp(strength, 0f, 2f);
+		_hitReactDurationScale = 1f;
+	}
+
+	/// <summary>
+	/// 玩家破防的姿态（T37 缺口② / 05 §4）。基类的 <c>OnPostureBroken</c> 是空的，
+	/// 玩家没覆写，于是破防时"人物姿态上什么都没发生"——玩家只会觉得"我卡住了"，
+	/// 而不知道为什么。
+	///
+	/// 这里**刻意复用受击反应那条通道**（比普通受击更猛、更长），而不是新画一套动作：
+	/// 灰盒期一共只有五个姿势（T38 才是补姿势的卡），多造一套动作既没人验、也没处放。
+	/// 破防与普通格挡的区分靠"更长更猛的后仰 + 硬直 50 帧 + HUD 拆开提示"三件一起。
+	/// </summary>
+	public void PlayGuardBreak()
+	{
+		_hitReactElapsed = 0f;
+		_hitReactStrength = GuardBreakStrength;
+		_hitReactDurationScale = GuardBreakDurationScale;
 	}
 
 	public void AnimateCombat(float delta)
@@ -102,7 +129,7 @@ public partial class BlockoutRig : Node3D
 		if (_hitReactElapsed >= 0f)
 		{
 			_hitReactElapsed += delta;
-			float reactT = Mathf.Clamp(_hitReactElapsed / HitReactDuration, 0f, 1f);
+			float reactT = Mathf.Clamp(_hitReactElapsed / (HitReactDuration * _hitReactDurationScale), 0f, 1f);
 			float falloff = (1f - reactT) * (1f - reactT) * _hitReactStrength;
 
 			_headPivotLean = -0.55f * falloff;

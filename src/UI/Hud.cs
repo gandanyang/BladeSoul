@@ -51,10 +51,37 @@ public partial class Hud : CanvasLayer
 	[Export] public Color IssenPulseColor { get; set; } = new(1f, 1f, 1f);
 	[Export] public Color BlockPulseColor { get; set; } = new(0.55f, 0.60f, 0.62f);
 	[Export] public Color PlayerHitPulseColor { get; set; } = new(0.44f, 0.06f, 0.08f);
+
+	/// <summary>
+	/// 破防脉冲（T37 缺口②）：**高对比白**，与格挡的青灰必须一眼分开——
+	/// 之前两者合并成同一路，所以"玩家破防"和"普通格挡"在屏幕上根本分不出来。
+	/// </summary>
+	[Export] public Color GuardBreakPulseColor { get; set; } = new(1f, 1f, 1f);
+
 	[Export] public int PulseFrames { get; set; } = 18;
 	[Export] public int PromptFrames { get; set; } = 34;
 	[Export] public int PromptFontSize { get; set; } = 26;
 	[Export] public Color PromptColor { get; set; } = new(0.90f, 0.95f, 1f);
+
+	[ExportGroup("破防预警（T37 缺口②）")]
+
+	/// <summary>
+	/// 玩家体干到这条线就开始给持续预警——让玩家提前知道"再挡一下就破"（11 §4.3 的下半截）。
+	/// 在那之前破防是"突然发生"的，玩家学不会。
+	/// </summary>
+	[Export] public float PostureWarnRatio { get; set; } = 0.75f;
+
+	/// <summary>
+	/// 预警色：**青白，不是暖色**——暖色只允许出现在灯笼上（07 §7 / 10 §1）。
+	/// 危险的表达靠**亮度**，不靠色相：灰度下也读得出来（05 §4.3）。
+	/// </summary>
+	[Export] public Color PostureWarnColor { get; set; } = new(0.82f, 0.92f, 0.97f);
+
+	/// <summary>预警边缘的最大不透明度。刻意很弱——它是持续状态，不能盖过结算脉冲。</summary>
+	[Export] public float PostureWarnMaxAlpha { get; set; } = 0.22f;
+
+	/// <summary>半自动防御剩余次数的弱提示（制作人裁定 2026-09-13：资源必须可见）。</summary>
+	[Export] public int HalfAutoChargesFontSize { get; set; } = 12;
 
 	/// <summary>文字提示（「弹开」「一闪」）。**它是脚手架**，手感验证通过后应默认关掉（11 §5.1）。</summary>
 	[Export] public bool ShowTextPrompts { get; set; } = true;
@@ -75,6 +102,16 @@ public partial class Hud : CanvasLayer
 	public int IssenPrompts { get; private set; }
 	public int BlockFlashes { get; private set; }
 	public int PlayerHitFlashes { get; private set; }
+
+	/// <summary>破防提示次数（T37 缺口②）。**与 <see cref="BlockFlashes"/> 分开计**——合并就分不出两者了。</summary>
+	public int GuardBreakFlashes { get; private set; }
+
+	/// <summary>体干已进入预警区（"再挡一下就破"），11 §4.3 的下半截。</summary>
+	public bool PostureWarnActive { get; private set; }
+
+	/// <summary>半自动防御剩余次数（制作人裁定：资源要可见）。</summary>
+	public int HalfAutoChargesLeft { get; private set; }
+
 	public string LastPrompt { get; private set; } = "";
 
 	private ICombatActorDebug? _player;
@@ -107,6 +144,10 @@ public partial class Hud : CanvasLayer
 	private int _focusHoldFramesLeft;
 	private ICombatActorDebug? _focus;
 	private int _lastHealDots = -1;
+	private Label _halfAutoLabel = null!;
+
+	/// <summary>见过非零的半自动次数（= 当前难度档有这个机制）。非見習档整行不显示。</summary>
+	private bool _halfAutoSeen;
 
 	public override void _EnterTree()
 	{
@@ -170,9 +211,17 @@ public partial class Hud : CanvasLayer
 				break;
 
 			case Verdict.Block:
-			case Verdict.GuardBreak:
 				BlockFlashes++;
 				Pulse(BlockPulseColor);
+				break;
+
+			// T37 缺口②：破防必须与普通格挡**分开**。
+			// 之前两者走同一路，玩家破防时只会看到和格挡一模一样的青灰脉冲——
+			// 于是"我卡住了"这件事没有任何解释。
+			case Verdict.GuardBreak:
+				GuardBreakFlashes++;
+				Pulse(GuardBreakPulseColor);
+				Prompt("破防");
 				break;
 
 			case Verdict.Hit:
@@ -257,6 +306,31 @@ public partial class Hud : CanvasLayer
 			for (int i = 0; i < _healDots.Length; i++)
 				_healDots[i].Color = i < _lastHealDots ? HealDotColor : HealDotSpentColor;
 		}
+
+		// T37 缺口②：体干进入预警区就持续给信号——破防不该是"突然发生"的。
+		PostureWarnActive = PlayerPostureRatio >= PostureWarnRatio;
+
+		// T37 缺口③：半自动防御剩余次数。资源不可见就没法管理（制作人裁定）。
+		int charges = _player.HalfAutoGuardChargesLeft;
+
+		if (charges != HalfAutoChargesLeft)
+		{
+			HalfAutoChargesLeft = charges;
+
+			if (charges > 0)
+				_halfAutoSeen = true;   // 只要见过非零，就说明这一档有这个机制
+
+			UpdateHalfAutoLabel();
+		}
+	}
+
+	/// <summary>半自动防御的弱提示：非見習档没有这个机制，整行不显示（不要挂一行 0 在屏幕上）。</summary>
+	private void UpdateHalfAutoLabel()
+	{
+		_halfAutoLabel.Visible = _halfAutoSeen;
+
+		if (_halfAutoSeen)
+			_halfAutoLabel.Text = $"自动防御 {HalfAutoChargesLeft}";
 	}
 
 	private void UpdateFocus()
@@ -355,6 +429,18 @@ public partial class Hud : CanvasLayer
 
 	private void UpdatePulse()
 	{
+		ApplyEdgeTint();
+
+		if (_promptFramesLeft > 0 && --_promptFramesLeft == 0)
+			_prompt.Text = "";
+	}
+
+	/// <summary>
+	/// 屏幕边缘的颜色。两种来源共用这四条窄带，**瞬时事件优先于持续状态**：
+	/// 结算脉冲（弹开/一闪/格挡/挨打/破防）盖过体干预警。
+	/// </summary>
+	private void ApplyEdgeTint()
+	{
 		if (_pulseFramesLeft > 0)
 		{
 			_pulseFramesLeft--;
@@ -363,15 +449,30 @@ public partial class Hud : CanvasLayer
 
 			foreach (ColorRect edge in _edges)
 				edge.Color = color;
+
+			return;
 		}
-		else if (_edges.Length > 0 && _edges[0].Color.A > 0f)
+
+		// T37 缺口②：没有脉冲时给"体干快满"让位。越接近满越亮，但**上限很低**
+		// （它是持续状态，不能盖过结算提示，更不能变成第二种血条）。
+		if (PostureWarnActive)
+		{
+			float span = Mathf.Max(0.01f, 1f - PostureWarnRatio);
+			float strength = Mathf.Clamp((PlayerPostureRatio - PostureWarnRatio) / span, 0.15f, 1f);
+			Color warn = PostureWarnColor;
+			warn.A = PostureWarnMaxAlpha * strength;
+
+			foreach (ColorRect edge in _edges)
+				edge.Color = warn;
+
+			return;
+		}
+
+		if (_edges.Length > 0 && _edges[0].Color.A > 0f)
 		{
 			foreach (ColorRect edge in _edges)
 				edge.Color = new Color(0f, 0f, 0f, 0f);
 		}
-
-		if (_promptFramesLeft > 0 && --_promptFramesLeft == 0)
-			_prompt.Text = "";
 	}
 
 	// ── 布局 ───────────────────────────────────────────────────
@@ -406,6 +507,22 @@ public partial class Hud : CanvasLayer
 		for (int i = 0; i < _healDots.Length; i++)
 			_healDots[i] = MakeRect(_playerPanel, HealDotSpentColor,
 				2f + i * 15f, postureTrackTop + PlayerPostureBarHeight + 7f, 10f, 10f);
+
+		// 半自动防御剩余次数（T37 缺口③ / 制作人裁定）。刻意很弱：
+		// 青灰小字、不抢眼——**暖色只属于灯笼**（07 §7），这里连暖色的边都不许沾。
+		_halfAutoLabel = new Label
+		{
+			Name = "HalfAutoCharges",
+			Visible = false,
+			MouseFilter = Control.MouseFilterEnum.Ignore,
+		};
+		_halfAutoLabel.AddThemeFontSizeOverride("font_size", HalfAutoChargesFontSize);
+		_halfAutoLabel.AddThemeColorOverride("font_color", PlayerPostureColor);
+		_halfAutoLabel.OffsetLeft = 2f;
+		_halfAutoLabel.OffsetRight = panelWidth;
+		_halfAutoLabel.OffsetTop = postureTrackTop + PlayerPostureBarHeight + 20f;
+		_halfAutoLabel.OffsetBottom = _halfAutoLabel.OffsetTop + 14f;
+		_playerPanel.AddChild(_halfAutoLabel);
 
 		// 敌方面板（上方居中）：名字 + 血条 + 架势槽
 		_enemyPanel = MakeControl("EnemyPanel", 0.5f, 0f,

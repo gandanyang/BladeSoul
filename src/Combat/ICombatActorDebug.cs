@@ -49,6 +49,13 @@ public interface ICombatActorDebug
     int HealChargesLeft { get; }
 
     /// <summary>
+    /// 半自动防御的剩余次数（T37 缺口③ 追加，HUD 的弱提示用它）。
+    /// **只加不改**：只有玩家有这个概念，其它单位恒为 0。
+    /// 制作人裁定（2026-09-13）：05 说它"把精准时机换成资源管理"，资源不可见就没法管理。
+    /// </summary>
+    int HalfAutoGuardChargesLeft { get; }
+
+    /// <summary>
     /// 输入缓冲的人类可读快照，例如 <c>"dodge(2), attack(0)"</c>；没有缓冲内容时为空串。
     /// 调试面板的 WINDOWS 区块用它。
     /// </summary>

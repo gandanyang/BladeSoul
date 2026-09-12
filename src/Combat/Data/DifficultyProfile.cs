@@ -63,6 +63,25 @@ public partial class DifficultyProfile : Resource
 
     [ExportGroup("辅助（可及性）")]
     [Export] public bool ShowPerilousCue { get; set; } = true;
+
+    /// <summary>
+    /// 半自动防御（T37 缺口③ / 05 §126）。**只有最简单档（見習）开**（05 §50）。
+    ///
+    /// 语义由 05 §126-128 定死，执行侧不许自己发明：
+    /// 按住防御时，若没手动弹开，系统在**命中前 2 帧**自动判定弹开，
+    /// **每 10 秒最多 3 次**，且**只对「一般攻击」生效，对「危」攻击一律不生效**。
+    /// 它把"精准时机"换成"资源管理"，不是无敌。
+    /// </summary>
     [Export] public bool HalfAutoGuard { get; set; }
+
+    /// <summary>半自动防御提前几帧判定（05 §126：命中前 2 帧）。</summary>
+    [Export] public int HalfAutoGuardLeadFrames { get; set; } = 2;
+
+    /// <summary>半自动防御的额度窗口（帧）。05 §126 的"每 10 秒"= 600 帧。</summary>
+    [Export] public int HalfAutoGuardWindowFrames { get; set; } = 600;
+
+    /// <summary>一个额度窗口内最多触发几次（05 §126：3 次）。</summary>
+    [Export] public int HalfAutoGuardMaxTriggers { get; set; } = 3;
+
     [Export] public bool ShowParryRhythm { get; set; }
 }

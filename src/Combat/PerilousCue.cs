@@ -36,7 +36,13 @@ public partial class PerilousCue : Node3D
 	/// <summary>最近一次预警的形态（端到端测试断言"确实走了 Perilous 分支"）。</summary>
 	public PerilousKind LastKind { get; private set; } = PerilousKind.None;
 
-	/// <summary>当前是否正在预警。</summary>
+	/// <summary>
+	/// 当前是否正在预警——也就是"当前这一招是「危」"。T37 的半自动防御靠它把危排除掉（05 §128）。
+	///
+	/// ⚠️ 判"危"**只能用它，不能用 <see cref="LastKind"/>**：
+	/// <see cref="Hide"/> 不清 <c>LastKind</c>，所以一次危攻击之后
+	/// 后面每个普攻都会被误判成危。
+	/// </summary>
 	public bool IsShowing => _framesLeft > 0;
 
 	/// <summary>累计预警次数（测试与调试面板用）。</summary>

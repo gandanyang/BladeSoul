@@ -64,6 +64,46 @@ public partial class AtmosphereProfile : Resource
 	/// <summary>灯罩自发光强度。灯笼得自己亮，否则在雨夜里读不出"这里有个灯"。</summary>
 	[Export] public float LanternGlowEnergy { get; set; } = 2.0f;
 
+	[ExportGroup("室内天光（T40：房子里得有光）")]
+	/// <summary>
+	/// 天光**不是一盏灯，是"屋顶开了口子、冷光落下来"**（T40）。
+	///
+	/// 为什么必须是冷色：10 §1 的纪律是**暖色只能来自灯笼**，所以室内补光只允许是冷色；
+	/// 而它又不能是"凭空一盏冷色天花板灯"——那读起来是电灯，不是战国。
+	/// 所以每个天光锚点上方**真的开着一个洞**（关卡里用 CSG 减出来），
+	/// 光源就摆在洞口往下打，玩家看到的是光柱、不是灯具。
+	/// </summary>
+	[Export] public Color SkylightColor { get; set; } = new(0.52f, 0.60f, 0.72f);
+
+	[Export] public float SkylightEnergy { get; set; } = 2.6f;
+
+	/// <summary>天光的照射距离。它是一盏**柔光**（不是锥形聚光），所以要够盖住半个房间。</summary>
+	[Export] public float SkylightRange { get; set; } = 14.0f;
+
+	/// <summary>
+	/// 天光开口上限。开多了画面会"漏成筛子"，而且每个都是一次投影开销。
+	/// </summary>
+	/// <remarks>
+	/// 为什么是柔光而不是聚光：聚光的锥体和墙面相交会留下**硬边光斑**，
+	/// 打在墙上一眼就是投影仪/电灯的光斑，正是 10 §1 要避免的"不像战国"。
+	/// 柔光没有锥形边界，读起来是"天光从洞口漫下来"。
+	/// </remarks>
+	[Export] public int MaxSkylights { get; set; } = 4;
+
+	[ExportGroup("室内外光照分层（T40：灯笼不投影，光会穿墙）")]
+	/// <summary>
+	/// 室内几何所在的渲染层。**室外灯笼的 cull mask 不含这一层**，于是照不进屋里——
+	/// 这就是卡片说的"分层"，比给每盏灯笼开阴影便宜得多（灯笼仍然是零阴影的）。
+	/// 室内几何要**只挂这一层**（不挂默认的第 1 层），否则室外灯照样照得到。
+	/// </summary>
+	[Export] public int InteriorLayer { get; set; } = 2;
+
+	/// <summary>室外灯笼照哪些层（只照默认层）。</summary>
+	[Export] public uint OutdoorLanternCullMask { get; set; } = 1;
+
+	/// <summary>室内灯笼照哪些层。它在屋里、挡不住，所以室内外都照。</summary>
+	[Export] public uint IndoorLanternCullMask { get; set; } = 1 | 2;
+
 	[ExportGroup("读招保底（雾不许盖住判定）")]
 	/// <summary>魔骸发光的能量下限（10 §1：伤口/眼窝透红光，越强的敌人越亮）。</summary>
 	[Export] public float ReadabilityGlowMinEnergy { get; set; } = 1.8f;
