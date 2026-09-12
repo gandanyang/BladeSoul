@@ -28,6 +28,15 @@ public static class CombatTuning
     /// <summary>隐式 DDA 最多给多少帧（05 文档 §3）。</summary>
     public const int MaxDdaDeflectBonusFrames = 4;
 
+    /// <summary>一闪窗的下限：低于这个宽度，"读招反杀"就变成抽奖。</summary>
+    public const int MinIssenWindowFrames = 2;
+
+    /// <summary>一闪窗的上限。</summary>
+    public const int MaxIssenWindowFrames = 20;
+
+    /// <summary>「技」线升级最多给一闪窗多少帧（03 §6.4）。</summary>
+    public const int MaxUpgradeIssenBonusFrames = 2;
+
     /// <summary>
     /// 合成最终的弹开窗。
     /// 注意「半自动防御」不在这里：它改变的是"谁按下了防御键"，
@@ -45,5 +54,30 @@ public static class CombatTuning
             difficultyBaseFrames + upgrade + dda,
             MinDeflectWindowFrames,
             MaxDeflectWindowFrames);
+    }
+
+    /// <summary>
+    /// 合成最终的一闪窗。
+    ///
+    /// 结构与 <see cref="ResolveDeflectWindowFrames"/> **刻意保持一致**：
+    /// 两者是同一类东西（都是"时机判定的宽容度"），
+    /// 如果只给弹开窗建了合成通道而让一闪窗各处自己加，
+    /// 迟早会出现"只有弹开窗被正确合成"的错误（03 §6.7 的对账单）。
+    ///
+    /// 目前 DDA 不调整一闪窗（05 §3 的 DDA 表只动弹开窗），
+    /// 保留这个参数是为了两个函数同形——调用方传 0 即可。
+    /// </summary>
+    public static int ResolveIssenWindowFrames(
+        int difficultyBaseFrames,
+        int upgradeBonusFrames = 0,
+        int ddaBonusFrames = 0)
+    {
+        int upgrade = Math.Clamp(upgradeBonusFrames, 0, MaxUpgradeIssenBonusFrames);
+        int dda = Math.Clamp(ddaBonusFrames, 0, MaxDdaDeflectBonusFrames);
+
+        return Math.Clamp(
+            difficultyBaseFrames + upgrade + dda,
+            MinIssenWindowFrames,
+            MaxIssenWindowFrames);
     }
 }

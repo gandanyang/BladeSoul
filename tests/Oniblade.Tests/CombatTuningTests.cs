@@ -55,4 +55,40 @@ public class CombatTuningTests
         // 负数的"加成"一定是上游算错了。宁可忽略它，也不要把难度偷偷调高。
         Assert.Equal(9, CombatTuning.ResolveDeflectWindowFrames(9, -5, -3));
     }
+
+    // ── 一闪窗：与弹开窗同形（03 §6.7 的对账单） ──────────────
+
+    [Theory]
+    [InlineData(6)]    // 修罗
+    [InlineData(6)]    // 武士（难度档里一闪窗也是 6）
+    [InlineData(9)]    // 剑客
+    [InlineData(12)]   // 見習
+    public void Issen_Bare_Difficulty_Value_Passes_Through(int baseFrames)
+    {
+        Assert.Equal(baseFrames, CombatTuning.ResolveIssenWindowFrames(baseFrames));
+    }
+
+    [Fact]
+    public void Issen_Upgrade_Bonus_Is_Capped_At_Two()
+    {
+        // 技线在 4 / 9 级各给 +1，合计正好 +2 —— 与 CombatTuning 的上限对齐
+        Assert.Equal(8, CombatTuning.ResolveIssenWindowFrames(6, 2));
+        Assert.Equal(8, CombatTuning.ResolveIssenWindowFrames(6, 99));
+    }
+
+    [Fact]
+    public void Issen_Window_Has_Its_Own_Floor()
+    {
+        // 一闪窗比弹开窗更窄是合理的，但低于 2 帧就变成抽奖了
+        Assert.Equal(CombatTuning.MinIssenWindowFrames, CombatTuning.ResolveIssenWindowFrames(0));
+    }
+
+    [Fact]
+    public void Both_Windows_Ignore_Negative_Bonuses()
+    {
+        // 两个函数必须走同一条"负数一律忽略"的路径——
+        // 上游算错了不该变成偷偷加难度
+        Assert.Equal(9, CombatTuning.ResolveDeflectWindowFrames(9, -5, -3));
+        Assert.Equal(6, CombatTuning.ResolveIssenWindowFrames(6, -5, -3));
+    }
 }
