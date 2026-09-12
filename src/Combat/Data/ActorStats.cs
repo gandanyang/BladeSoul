@@ -21,6 +21,13 @@ public partial class ActorStats : Resource
     [Export] public float MoveSpeed { get; set; } = 4.2f;
     [Export] public float SprintSpeed { get; set; } = 7.0f;
     [Export] public float AttackMoveSpeed { get; set; } = 1.6f;
+
+    /// <summary>
+    /// 格挡姿态下的移动速度倍率（02 文档 §2.2：约 40%）。
+    /// 默认 1.0 = 不变；只有会格挡的角色（玩家）在 data/actors/ 里调小它。
+    /// </summary>
+    [Export] public float GuardMoveScale { get; set; } = 1.0f;
+
     [Export] public float TurnSpeed { get; set; } = 12f;
 
     [ExportGroup("档次")]

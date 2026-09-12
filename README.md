@@ -104,24 +104,30 @@ C# 的代价是**改代码必须重新编译，不能像 GDScript 那样热重�
 
 ## 当前状态
 
-- [x] 环境确认：Godot 4.7.1 stable mono 可用，`dotnet build` 0 错误 0 警告
-- [x] 项目规划文档（00~07 全套）
+- [x] 环境确认：Godot 4.7.1 stable mono 可用
+- [x] 项目规划文档（00~08 全套 + 任务看板）
 - [x] git 仓库 + 基线提交
-- [x] **战斗裁决器（纯逻辑）**：`CombatResolver` / `IssenTable` / `PostureMeter` / `InputBuffer`——`dotnet test` **59 项全绿**
-- [x] **数据层**：`AttackData` / `DifficultyProfile` / `ActorStats` + 16 个 `.tres`（4 难度 / 12 招式），无头自检 0 错误
-- [x] 一键验证脚本 `tools\check.ps1`
-- [ ] **M0 剩余：调试面板 F1 + `CombatActor`/判定框 + 木桩** ← 下一步
-- [ ] M1：玩家三连击 + 输入缓冲
-- [ ] M2：格挡 + 弹开 + 顿帧
-- [ ] M3：体干 + 忍杀 + 第一个敌人 AI
-- [ ] M4：拼刀 + 一闪家族
-- [ ] M5：垂直切片（第一个 BOSS + 完整关卡）
+- [x] **战斗裁决器（纯逻辑）**：`CombatResolver` / `IssenTable` / `PostureMeter` / `InputBuffer` / `CombatTuning`
+- [x] **数据层**：`AttackData` / `DifficultyProfile` / `ActorStats` + 19 个 `.tres`，无头自检 0 错误
+- [x] **音频层**：14 个程序化占位音效 + 战斗总线布局
+- [x] **调试面板 F1~F8**（04 §13）
+- [x] **M0.5 可玩闭环**：`CombatActor` / 判定框 / 仲裁器 / 状态机 / 三连击 / 木桩 / 道场
+      —— 已由真人试玩确认手感方向正确
+- [x] 一键验证 `tools\check.ps1`：**98 项单测 + 资源自检 + 端到端战斗冒烟**
+- [ ] **M1：格挡 + 弹开 + 音高递增 + 死亡重开 ≤3 秒** ← 当前
+- [ ] M2：体干 + 忍杀 + 第一个敌人 AI
+- [ ] M3：拼刀 + 一闪家族 + 慢镜
+- [ ] M4：BOSS「鬼哭」+ 岐阜城下 + 存档 + HUD
+- [ ] M5 = **1.0 发布**：四档难度 + DDA + 道场 + 教学关
 
 ## 立刻可以开始的下一步
 
 > 每一条做完都跑一遍 `powershell -File tools\check.ps1`。
 
-1. **调试面板**（04 文档 §13，F1~F8）——没有它，后面每一行调参都是盲人摸象
-2. `CombatActor` 基类 + `Hitbox` / `Hurtbox`（同步形状查询，不用 Area3D 信号）+ 一个木桩
-3. 玩家三连击：状态机 POCO + 帧精确动画 seek，打木桩能连出"壹→贰→叁"
-4. 格挡 + 弹开 + 顿帧（**本项目的立命之本**），并接上占位音效
+当前唯一的验收标准是 08 文档 §5 的那句话：**"弹开成功时会想再试一次。"**
+
+1. 玩家格挡与弹开（T6）——本项目的立命之本
+2. 挥砍假人（T7）——没有会还手的靶子，弹开就无从练起
+3. 死亡与重开 ≤3 秒（T8）——重试成本是与弹开窗同级的难度参数
+
+任务规格与状态见 [TASKS.md](docs/TASKS.md)。

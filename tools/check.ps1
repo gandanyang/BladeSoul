@@ -23,15 +23,15 @@ try {
         & $godot --headless --path $root --import | Out-Null
     }
 
-    Write-Host '--- 1/4 build ---' -ForegroundColor Cyan
+    Write-Host '--- 1/5 build ---' -ForegroundColor Cyan
     dotnet build
     if ($LASTEXITCODE -ne 0) { throw "build failed (exit $LASTEXITCODE)" }
 
-    Write-Host '--- 2/4 unit tests (pure logic) ---' -ForegroundColor Cyan
+    Write-Host '--- 2/5 unit tests (pure logic) ---' -ForegroundColor Cyan
     dotnet test tests\Oniblade.Tests\Oniblade.Tests.csproj
     if ($LASTEXITCODE -ne 0) { throw "unit tests failed (exit $LASTEXITCODE)" }
 
-    Write-Host '--- 3/4 resource self-test (headless engine) ---' -ForegroundColor Cyan
+    Write-Host '--- 3/5 resource self-test (headless engine) ---' -ForegroundColor Cyan
     if (-not (Test-Path -LiteralPath $godot)) {
         Write-Warning "Godot not found: $godot (resource self-test skipped)"
     }
@@ -39,9 +39,14 @@ try {
         & $godot --headless --path $root res://scenes/tests/SelfTest.tscn
         if ($LASTEXITCODE -ne 0) { throw "resource self-test failed (exit $LASTEXITCODE)" }
 
-        Write-Host '--- 4/4 combat smoke test (headless engine) ---' -ForegroundColor Cyan
+        Write-Host '--- 4/5 combat smoke test (headless engine) ---' -ForegroundColor Cyan
         & $godot --headless --path $root res://scenes/tests/CombatSmoke.tscn
         if ($LASTEXITCODE -ne 0) { throw "combat smoke test failed (exit $LASTEXITCODE)" }
+
+        # T6/T7：会还手的假人 + 弹开窗，端到端跑一遍（480 帧 ≈ 4 次攻防）。
+        Write-Host '--- 5/5 deflect training test (headless engine) ---' -ForegroundColor Cyan
+        & $godot --headless --path $root res://scenes/tests/DeflectTraining.tscn
+        if ($LASTEXITCODE -ne 0) { throw "deflect training test failed (exit $LASTEXITCODE)" }
     }
 
     Write-Host 'ALL CHECKS PASSED' -ForegroundColor Green
