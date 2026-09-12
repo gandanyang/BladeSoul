@@ -40,6 +40,12 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 	/// </summary>
 	[Export] public float DodgeSpeedScale { get; set; } = 2.4f;
 
+	/// <summary>
+	/// 一闪的扫描半径（米）。比杂兵 2.2m 的攻击距离略大——
+	/// 02 §2.3 的窗口是**时间**上的（命中前 0~N 帧），距离只是"这一刀我要不要搭理"的门槛。
+	/// </summary>
+	[Export] public float IssenScanRange { get; set; } = 3.0f;
+
 	/// <summary>玩家不会被一闪秒杀（01 文档：任何机制都不该一击终结玩家）。</summary>
 	public override EnemyTier IssenTier => EnemyTier.Boss;
 
@@ -136,6 +142,7 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 		machine.Add(new DeflectState());
 		machine.Add(new DodgeState());
 		machine.Add(new HealState());
+		machine.Add(new IssenState());
 	}
 
 	/// <summary>防御键是否按住（<see cref="IGuardInput"/>）。敌人不实现它，所以不受防御状态影响。</summary>
@@ -260,6 +267,12 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 
 				source = GuardEntrySource.Neutral;
 				break;
+
+			// 一闪（含安全窗与落空）**整段不可取消**，防御也不例外（02 §2.3）。
+			// 这里是 ForceChange 的入口，IssenState.CanTransitionTo 拦不住它，必须显式拒绝。
+			// 安全窗那一段本身就在格挡姿态里，所以"按早了不挨打"不受这条影响。
+			case IssenState:
+				return;
 
 			default:
 				source = GuardEntrySource.Neutral;
@@ -460,8 +473,21 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 		base.ResetForBattle();
 	}
 
+	/// <summary>
+	/// 攻击键有两个出口：**一闪优先**，其次才是普通攻击（02 §3 裁定：一闪应对一切攻击）。
+	/// 判定走 02 §4 的"输入时捕获意图"——按下的那一瞬间扫描附近正在挥刀的敌人，当场定结果。
+	/// </summary>
 	public override bool ConsumeAttackInput()
-		=> !Gauntlet.IsDeepAbsorbing && _buffer.Consume(PlayerAction.Attack, InputBufferFrames);
+	{
+		if (Gauntlet.IsDeepAbsorbing)
+			return false;
+
+		if (!_buffer.Consume(PlayerAction.Attack, InputBufferFrames))
+			return false;
+
+		// TryIssen 吃掉了这次按键（一闪 / 安全窗 / 落空都算）→ 不再走普通攻击。
+		return !TryIssen();
+	}
 
 	public override bool TryGetMoveIntent(out MoveIntent intent)
 	{
@@ -495,7 +521,13 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 		return direction.LengthSquared() > 0.0001f;
 	}
 
-	public override void OnAttackStarted(AttackData data) => _rig.PlayAttack();
+	public override void OnAttackStarted(AttackData data)
+	{
+		// 基类实现负责「危」攻击的预警（T12）。玩家现在没有危招式，
+		// 但覆写时不调 base 是个定时炸弹——等哪天真加了就会静默丢失预警。
+		base.OnAttackStarted(data);
+		_rig.PlayAttack();
+	}
 
 	protected override void OnTickVisual(float dt, float speed01)
 	{

@@ -59,8 +59,7 @@ public class CombatTuningTests
     // ── 一闪窗：与弹开窗同形（03 §6.7 的对账单） ──────────────
 
     [Theory]
-    [InlineData(6)]    // 修罗
-    [InlineData(6)]    // 武士（难度档里一闪窗也是 6）
+    [InlineData(6)]    // 修罗 / 武士（这两档的一闪窗都是 6）
     [InlineData(9)]    // 剑客
     [InlineData(12)]   // 見習
     public void Issen_Bare_Difficulty_Value_Passes_Through(int baseFrames)
