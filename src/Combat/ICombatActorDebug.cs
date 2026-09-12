@@ -43,6 +43,12 @@ public interface ICombatActorDebug
     int DeflectChain { get; }
 
     /// <summary>
+    /// 喝血剩余次数（T31 追加，HUD 的"血瓶圆点"用它）。
+    /// **只加不改**：只有玩家有这个概念，其它单位恒为 0。
+    /// </summary>
+    int HealChargesLeft { get; }
+
+    /// <summary>
     /// 输入缓冲的人类可读快照，例如 <c>"dodge(2), attack(0)"</c>；没有缓冲内容时为空串。
     /// 调试面板的 WINDOWS 区块用它。
     /// </summary>

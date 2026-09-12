@@ -23,6 +23,7 @@ AudioDirector="*res://src/Audio/AudioDirector.cs"
 DebugOverlay="*res://src/UI/DebugOverlay.cs"
 CombatVfxDirector="*res://src/Vfx/CombatVfxDirector.cs"
 DialogueBox="*res://src/Dialogue/DialogueBox.cs"
+Hud="*res://src/UI/Hud.cs"
 
 [dotnet]
 

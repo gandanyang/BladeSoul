@@ -494,6 +494,9 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 	/// <summary>还剩几次复活。用尽之后死亡会走 T14 的原地重开。</summary>
 	public int RevivesLeft { get; private set; }
 
+	/// <summary>HUD 的"血瓶圆点"读这个（T31）。</summary>
+	public override int HealChargesLeftForUi => HealChargesLeft;
+
 	/// <summary>
 	/// 补满复活次数。次数来自**难度档**（05 §2 的难度表：修罗 1 / 武士 1 / 剑客 2 / 見習 3），
 	/// 所以它是"可及性杠杆"而不是写死的常量。

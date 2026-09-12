@@ -485,6 +485,15 @@ public abstract partial class CombatActor : CharacterBody3D, ICombatActorDebug, 
 	int ICombatActorDebug.Posture => Posture.Current;
 	int ICombatActorDebug.MaxPosture => Posture.Max;
 
+	/// <summary>
+	/// 喝血剩余次数。**只给 UI 读**（T31）——只有玩家有，其它单位恒 0。
+	/// 单独开一个只读虚属性而不是直接实现接口成员，是因为 PlayerActor 已经有一个
+	/// 同名的公开属性（HealChargesLeft），显式接口实现没法被子类覆盖。
+	/// </summary>
+	public virtual int HealChargesLeftForUi => 0;
+
+	int ICombatActorDebug.HealChargesLeft => HealChargesLeftForUi;
+
 	public string StateName => Machine?.Current?.GetType().Name ?? "None";
 	public int StateFrame => Machine?.Current?.Frame ?? 0;
 	public int StateTotalFrames => Machine?.Current?.TotalFrames ?? 0;
