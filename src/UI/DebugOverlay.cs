@@ -80,6 +80,8 @@ public partial class DebugOverlay : CanvasLayer
     private bool _stepAdvanceArmed;
     private bool _dumpWhenReady;
     private int _wireLines;
+    private bool _wireDiagEnabled;
+    private readonly List<string> _wireDiag = new();
     private int _originalMaxSteps = 8;
     private int _refreshCounter;
     private bool _forceRefresh = true;
@@ -172,9 +174,14 @@ public partial class DebugOverlay : CanvasLayer
             _dumpWhenReady = false;
             Refresh();
             if (_drawShapes)
+            {
+                _wireDiagEnabled = true;
                 UpdateWireframes();   // 一并走一遍 F5 的代码路径，免得它只在人手按时才炸
+            }
             GD.Print(StripBbcode(BuildPanelText()));
             GD.Print($"[调试面板] F5 判定框：{(_drawShapes ? "on" : "off")}，{_wireLines} 条线段 / {_actors.Count} 个单位");
+            foreach (string line in _wireDiag)
+                GD.Print(line);
             GD.Print($"[调试面板] {DumpArg}：面板文本输出完毕（逻辑帧 {NowFrame()}）。");
             GetTree().Quit();
             return;
@@ -758,6 +765,11 @@ public partial class DebugOverlay : CanvasLayer
         }
 
         var writer = new LineWriter(_wire, _wireMaterial);
+        if (_wireDiagEnabled)
+        {
+            _wireDiag.Clear();
+            writer.EnableDiagnostics(_wireDiag);
+        }
         foreach ((Node node, ICombatActorDebug _) in _actors)
         {
             if (GodotObject.IsInstanceValid(node))
@@ -807,11 +819,16 @@ public partial class DebugOverlay : CanvasLayer
         if (node is Node3D node3)
         {
             if (node is CollisionShape3D { Shape: { } collisionShape })
-                AppendShape(writer, collisionShape, node3.GlobalTransform, ShapeColor(node.Name.ToString()));
-
-            // 04 §7 的 Hitbox 是 "Node3D + 一个 Shape3D 属性"，不是 CollisionShape3D，
-            // 所以再扫一遍这个节点暴露出来的 Shape3D 型 Godot 属性。
-            AppendPropertyShapes(node3, writer);
+            {
+                AppendShape(writer, collisionShape, node3.GlobalTransform, ShapeColor(node.Name.ToString()), $"{node3.GetPath()}");
+            }
+            else
+            {
+                // 04 §7 的 Hitbox 是 "Node3D + 一个 Shape3D 属性"，不是 CollisionShape3D，
+                // 所以扫一遍这个节点暴露出来的 Shape3D 型 Godot 属性。
+                // （CollisionShape3D 自己也有个 shape 属性，走上面的分支，别重复画。）
+                AppendPropertyShapes(node3, writer);
+            }
         }
 
         foreach (Node child in node.GetChildren())
@@ -834,7 +851,7 @@ public partial class DebugOverlay : CanvasLayer
                 if (value.VariantType != Variant.Type.Object || value.As<Shape3D>() is not { } shape)
                     continue;
 
-                AppendShape(writer, shape, node3.GlobalTransform, ShapeColor($"{node3.Name}/{propertyName}"));
+                AppendShape(writer, shape, node3.GlobalTransform, ShapeColor($"{node3.Name}/{propertyName}"), $"{node3.GetPath()}.{propertyName}");
             }
             catch (Exception)
             {
@@ -853,8 +870,9 @@ public partial class DebugOverlay : CanvasLayer
         return new Color(1.00f, 0.80f, 0.20f);       // 橙 = 身体等其他碰撞
     }
 
-    private static void AppendShape(LineWriter writer, Shape3D shape, Transform3D xform, Color colour)
+    private static void AppendShape(LineWriter writer, Shape3D shape, Transform3D xform, Color colour, string source)
     {
+        writer.BeginShape(source, shape);
         switch (shape)
         {
             case BoxShape3D box:
@@ -877,6 +895,7 @@ public partial class DebugOverlay : CanvasLayer
             default:
                 break;   // WorldBoundary / Segment / Concave / HeightMap 不画
         }
+        writer.EndShape();
     }
 
     private static void AppendBox(LineWriter writer, Transform3D xform, Vector3 half, Color colour)
@@ -981,6 +1000,10 @@ public partial class DebugOverlay : CanvasLayer
         private readonly ImmediateMesh _mesh;
         private readonly Material? _material;
         private bool _begun;
+        private List<string>? _diag;
+        private string? _shapeSource;
+        private string? _shapeKind;
+        private int _shapeStartLines;
 
         public LineWriter(ImmediateMesh mesh, Material? material)
         {
@@ -989,6 +1012,25 @@ public partial class DebugOverlay : CanvasLayer
         }
 
         public int Lines { get; private set; }
+
+        public void EnableDiagnostics(List<string> diag) => _diag = diag;
+
+        public void BeginShape(string source, Shape3D shape)
+        {
+            if (_diag is null)
+                return;
+            _shapeSource = source;
+            _shapeKind = shape.GetType().Name;
+            _shapeStartLines = Lines;
+        }
+
+        public void EndShape()
+        {
+            if (_diag is null || _shapeSource is null)
+                return;
+            _diag.Add($"    {_shapeSource}  {_shapeKind}  {Lines - _shapeStartLines} 线");
+            _shapeSource = null;
+        }
 
         public void Add(Vector3 from, Vector3 to, Color colour)
         {

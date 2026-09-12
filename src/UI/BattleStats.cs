@@ -179,9 +179,17 @@ public sealed class BattleStats
         }
 
         sb.Append("  结算次数      ").Append(Records).AppendLine();
-        sb.Append("  弹开成功率    ").Append(DeflectSuccessRate.ToString("P1"))
-          .Append("  (").Append(PlayerDeflects).Append('/').Append(DefendableRecords).Append(')')
-          .AppendLine("      健康区：新手 10~25% / 熟练 40~60%");
+        if (DefendableRecords == 0)
+        {
+            // 只打不防的一局里没有分母——别显示一个看着像"0% 弹开"的假数字。
+            sb.AppendLine("  弹开成功率    —（本场还没有玩家的可防御结算）");
+        }
+        else
+        {
+            sb.Append("  弹开成功率    ").Append(DeflectSuccessRate.ToString("P1"))
+              .Append("  (").Append(PlayerDeflects).Append('/').Append(DefendableRecords).Append(')')
+              .AppendLine("      健康区：新手 10~25% / 熟练 40~60%");
+        }
         sb.Append("  交战跨度      ").Append(SpanSeconds.ToString("F1")).Append("s  (")
           .Append(SpanFrames).AppendLine(" 帧)   健康区：杂兵 15~40s / BOSS 90~240s");
         sb.Append("  一闪次数      ").Append(Issens).AppendLine("       健康区：≥2");

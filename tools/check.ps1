@@ -10,6 +10,19 @@ $godot = 'G:\Godot_v4.7.1-stable_mono_win64\Godot_v4.7.1-stable_mono_win64_conso
 
 Push-Location $root
 try {
+    # Assets added outside the editor have no .import file, and then ResourceLoader
+    # cannot see them (res:// paths won't resolve). Only pay for the import pass
+    # when something is actually missing.
+    $importExtensions = '.wav', '.ogg', '.mp3', '.png', '.jpg', '.jpeg', '.svg', '.glb', '.gltf', '.ttf', '.otf'
+    $needsImport = Get-ChildItem -Path (Join-Path $root 'assets') -Recurse -File -ErrorAction SilentlyContinue |
+        Where-Object { $importExtensions -contains $_.Extension.ToLower() -and
+                       -not (Test-Path -LiteralPath ($_.FullName + '.import')) }
+
+    if ($needsImport) {
+        Write-Host '--- 0/4 import new assets ---' -ForegroundColor Yellow
+        & $godot --headless --path $root --import | Out-Null
+    }
+
     Write-Host '--- 1/4 build ---' -ForegroundColor Cyan
     dotnet build
     if ($LASTEXITCODE -ne 0) { throw "build failed (exit $LASTEXITCODE)" }

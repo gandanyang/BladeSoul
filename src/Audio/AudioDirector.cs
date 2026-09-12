@@ -30,17 +30,30 @@ public partial class AudioDirector : Node
     private readonly Dictionary<CombatSfx, string> _paths = new();
     private readonly Dictionary<string, AudioStream?> _cache = new();
 
+    /// <summary>战斗音效走这条总线（07 文档 §6），慢镜时音乐变调不会带上它。</summary>
+    private const string CombatBus = "Combat";
+
+    /// <summary>占位期是程序化生成的 .wav，正式资产替换后改这里即可。</summary>
+    public static string PathFor(CombatSfx sfx) => $"res://assets/audio/sfx/sfx_{ToSnake(sfx)}.wav";
+
     public override void _EnterTree()
     {
         Instance = this;
 
-        // 音效文件命名约定：assets/audio/sfx/sfx_<snake_case>.ogg（07 文档 §8）
         foreach (CombatSfx sfx in System.Enum.GetValues<CombatSfx>())
-            _paths[sfx] = $"res://assets/audio/sfx/sfx_{ToSnake(sfx)}.ogg";
+            _paths[sfx] = PathFor(sfx);
+
+        // 总线只在 default_bus_layout.tres 真的加载成功时才用，否则退回 Master，
+        // 避免"为了一个混音布局把整个游戏的声音搞没"。
+        bool hasCombatBus = AudioServer.GetBusIndex(CombatBus) >= 0;
 
         for (int i = 0; i < VoicePoolSize; i++)
         {
-            var player = new AudioStreamPlayer { Name = $"Voice{i}" };
+            var player = new AudioStreamPlayer
+            {
+                Name = $"Voice{i}",
+                Bus = hasCombatBus ? CombatBus : "Master",
+            };
             AddChild(player);
             _voices.Add(player);
         }

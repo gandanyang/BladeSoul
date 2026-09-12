@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Godot;
+using Oniblade.Audio;
 using Oniblade.Combat.Data;
 
 namespace Oniblade.Dev;
@@ -19,20 +20,42 @@ public partial class SelfTest : Node
     private int _attacks;
     private int _difficulties;
     private int _actorData;
+    private int _audio;
 
     public override void _Ready()
     {
         Scan("res://data");
+        CheckAudio();
 
         foreach (string error in _errors)
             GD.PrintErr($"[自检] ✗ {error}");
 
-        GD.Print($"[自检] 资源 {_resources} 个（招式 {_attacks} / 难度 {_difficulties} / 角色数据 {_actorData}），错误 {_errors.Count} 项");
+        GD.Print($"[自检] 资源 {_resources} 个（招式 {_attacks} / 难度 {_difficulties} / 角色数据 {_actorData}），音效 {_audio} 个，错误 {_errors.Count} 项");
 
         if (_errors.Count == 0)
             GD.Print("[自检] ✓ 通过");
 
         GetTree().Quit(_errors.Count == 0 ? 0 : 1);
+    }
+
+    /// <summary>战斗音效必须齐全：缺了不会崩，但会让"手感"在无声中退化。</summary>
+    private void CheckAudio()
+    {
+        foreach (CombatSfx sfx in System.Enum.GetValues<CombatSfx>())
+        {
+            string path = AudioDirector.PathFor(sfx);
+
+            if (!ResourceLoader.Exists(path))
+            {
+                _errors.Add($"缺少音效 {path}（跑 tools\\gen_placeholder_sfx.ps1 生成）");
+                continue;
+            }
+
+            if (ResourceLoader.Load(path) is AudioStream)
+                _audio++;
+            else
+                _errors.Add($"{path} 不是 AudioStream");
+        }
     }
 
     private void Scan(string path)
