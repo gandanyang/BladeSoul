@@ -40,7 +40,49 @@ environment = SubResource("Environment_dojo")
 
 [node name="Sun" type="DirectionalLight3D" parent="."]
 rotation = Vector3(-1, -0.6, 0)
+light_color = Color(0.62, 0.68, 0.82, 1)
+light_energy = 0.5
 shadow_enabled = true
+
+[node name="Lights" type="Node3D" parent="."]
+
+[node name="LampNW" type="OmniLight3D" parent="Lights"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 3.6, -5)
+light_color = Color(1, 0.85, 0.6, 1)
+light_energy = 2.4
+omni_range = 10.0
+shadow_enabled = true
+
+[node name="LampNE" type="OmniLight3D" parent="Lights"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 3.6, -5)
+light_color = Color(1, 0.85, 0.6, 1)
+light_energy = 2.4
+omni_range = 10.0
+
+[node name="LampSW" type="OmniLight3D" parent="Lights"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 3.6, 5)
+light_color = Color(1, 0.85, 0.6, 1)
+light_energy = 2.4
+omni_range = 10.0
+
+[node name="LampSE" type="OmniLight3D" parent="Lights"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 3.6, 5)
+light_color = Color(1, 0.85, 0.6, 1)
+light_energy = 2.4
+omni_range = 10.0
+shadow_enabled = true
+
+[node name="LampCenter" type="OmniLight3D" parent="Lights"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.4, 0)
+light_color = Color(1, 0.9, 0.72, 1)
+light_energy = 3.0
+omni_range = 12.0
+
+[node name="LampDoor" type="OmniLight3D" parent="Lights"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.4, 7)
+light_color = Color(0.75, 0.85, 1, 1)
+light_energy = 2.0
+omni_range = 8.0
 
 [node name="Shell" type="Node3D" parent="."]
 
