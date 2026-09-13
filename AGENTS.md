@@ -64,6 +64,9 @@ tools/   开发脚本       assets/ 原始素材
 | 角色状态机 | `src/Combat/States/*.cs`（POCO，不是 Node） |
 | 敌人 AI | `src/Enemies/` |
 | 调试面板 | `src/UI/DebugOverlay.cs`（F1~F8） |
+| **3D 资产 / Blender** | **[`docs/17-Blender与AI工具链.md`](docs/17-Blender与AI工具链.md)** ★ 要用 Blender 先读它（装在哪 / 怎么无头跑 / 三个坑） |
+| 动画体检（骨头到底动没动） | `scenes/tests/AnimProbe.tscn`（几秒出逐骨偏转表） |
+| 走路体检（腿动没动） | `scenes/tests/MoveProbe.tscn` |
 
 ---
 
@@ -92,6 +95,8 @@ Get-ChildItem -Recurse src -File | Sort LastWriteTime -Desc | Select -First 5
 | `project.godot` 里的注释 | 编辑器保存时会被清掉 | 权威内容写进 `docs/00` |
 | 端到端测试等太久 | `check.ps1` 变慢 | 测试里缩短等待参数，**不许改机制** |
 | 覆写虚方法忘了 `base` | 静默丢掉基类行为（如「危」预警） | 覆写时先想"基类有没有做事" |
+| **用 Blender 前不读 docs/17** | 重新探"装没装 / 走不走代理 / 能不能无头"，纯浪费 | **先读 [docs/17](docs/17-Blender与AI工具链.md)**；资产脚本统一 `--background --factory-startup` |
+| **模型里混着垃圾对象** | 主角模型里藏着 80 面的单位球（把包围盒撑到 ±1），会误导所有按尺寸做的判断 | 先量包围盒；不合理就怀疑有杂物 |
 
 ---
 
