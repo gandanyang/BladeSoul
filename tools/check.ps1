@@ -31,6 +31,12 @@ try {
     dotnet test tests\Oniblade.Tests\Oniblade.Tests.csproj
     if ($LASTEXITCODE -ne 0) { throw "unit tests failed (exit $LASTEXITCODE)" }
 
+    # P0 棘轮：**"定义了但没人读"的字段只许减少、不许新增**。
+    # 这类问题不会报错，只会悄悄和设计分家（蓄力斩的位移与破防标记就是这么漂的）。
+    Write-Host '--- 2b/32 dead config ratchet (pure script) ---' -ForegroundColor Cyan
+    & powershell -NoProfile -File (Join-Path $PSScriptRoot 'check_dead_config.ps1')
+    if ($LASTEXITCODE -ne 0) { throw "dead config ratchet failed (exit $LASTEXITCODE)" }
+
     Write-Host '--- 3/32 resource self-test (headless engine) ---' -ForegroundColor Cyan
     if (-not (Test-Path -LiteralPath $godot)) {
         Write-Warning "Godot not found: $godot (resource self-test skipped)"

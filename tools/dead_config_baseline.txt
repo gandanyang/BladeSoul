@@ -1,0 +1,30 @@
+# "定义了但没人读"的基线（P0 欠债清单）。
+#
+# 里面的每条都是已知的死配置，允许暂时存在；修好一条就删一行。
+# check_dead_config.ps1 会把"已修好但没删行"的也报出来。
+# **基线的作用是"只许减少、不许新增"。**
+#
+# 格式：<声明所在文件名>::<字段名>
+
+ActorStats.cs::AttackMoveSpeed
+BossAiOverrides.cs::AttackIntervalScale
+BossAiOverrides.cs::MoveSpeedScale
+BossAiOverrides.cs::ReactionDelayBonusFrames
+BossPhaseProfile.cs::Ai
+BossPhaseProfile.cs::HealthThreshold
+BossPhaseProfile.cs::PhaseIndex
+BossPhaseProfile.cs::TransitionAnimName
+AttackData.cs::AnimName
+AttackData.cs::HitFx
+AttackData.cs::Knockback
+DifficultyProfile.cs::CoyoteFrames
+DifficultyProfile.cs::EnemyAttackIntervalScale
+DifficultyProfile.cs::EnemyHealthScale
+DifficultyProfile.cs::EnemyReactionDelayBonus
+DifficultyProfile.cs::EnemyStartupBonus
+DifficultyProfile.cs::GankMaxAttackers
+DifficultyProfile.cs::PlayerDamageTakenScale
+DifficultyProfile.cs::ShowParryRhythm
+DifficultyProfile.cs::ShowPerilousCue
+Hurtbox.cs::DamageMultiplier
+Hurtbox.cs::IsWeakPoint
