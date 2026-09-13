@@ -69,6 +69,14 @@ public abstract partial class CombatActor : CharacterBody3D, ICombatActorDebug, 
 	/// </summary>
 	public Transform3D SpawnTransform { get; private set; }
 
+	/// <summary>
+	/// 改写"战场起点"——**存档点（T42 鬼火）用它**：走到鬼火旁就等于把新的复活位置
+	/// 记进这里，之后死亡重开（<see cref="ResetForBattle"/>）会回到这儿而不是关卡入口。
+	/// 传入的是**当前时刻的完整变换**（位置 + 朝向）：朝向也要记，
+	/// 否则复活后背对着敌人开局。
+	/// </summary>
+	public void SetSpawnTransform(Transform3D transform) => SpawnTransform = transform;
+
 	/// <summary>死后是否掉落魄。玩家不掉（03 §6.1 说的是魔骸的魄）。</summary>
 	public virtual bool DropsSoulOnDeath => true;
 
