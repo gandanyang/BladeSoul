@@ -74,6 +74,31 @@ public partial class DialogueTest : Node3D
             $"引导占 {catalogue.GuidanceRatio:P0}，偏离 03 §2.7 的 80/20 纪律（应约 20%）");
 
         Check(catalogue.GuidanceCount > 0, "一组引导台词都没有：那就不叫 80/20，叫 100/0");
+
+        // ── 侵蚀分档台词（T30 的核心要求 / 03 §2.7）────────────────
+        // 她比玩家更早发现丛云在变，所以"那个声音"那一组必须随侵蚀阶段换一版。
+        // 为什么要有这条断言：分档内容原本是**没有任何自检盯着**的——
+        // 删掉它，80/20 那三条照样全绿。这类"静默失效"本项目的账上已经有好几笔。
+        DialogueSet? voice = catalogue.Get("voice");
+        Check(voice is not null, "找不到 voice 那一组（她关于「那个声音」的台词）");
+
+        if (voice is not null)
+        {
+            Check(voice.ResonanceLines.Count >= 2,
+                $"「共鸣」档的台词只有 {voice.ResonanceLines.Count} 行（至少要 2 行，否则分档名存实亡）");
+            Check(voice.AssimilationLines.Count >= 2,
+                $"「同化」档的台词只有 {voice.AssimilationLines.Count} 行（至少要 2 行）");
+
+            // 三档不能是复读：首句一样基本就能断定是抄的（逐行比对留给以后）。
+            bool sameLr = voice.Lines.Count > 0 && voice.ResonanceLines.Count > 0
+                          && voice.Lines[0].Text == voice.ResonanceLines[0].Text;
+            bool sameLa = voice.Lines.Count > 0 && voice.AssimilationLines.Count > 0
+                          && voice.Lines[0].Text == voice.AssimilationLines[0].Text;
+            bool sameRa = voice.ResonanceLines.Count > 0 && voice.AssimilationLines.Count > 0
+                          && voice.ResonanceLines[0].Text == voice.AssimilationLines[0].Text;
+            Check(!sameLr && !sameLa && !sameRa,
+                "三档台词的首句重复：分档不能是把同一句抄三遍");
+        }
     }
 
     // ── 2. 数据自净 ────────────────────────────────────────────
