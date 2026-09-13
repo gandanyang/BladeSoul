@@ -86,6 +86,24 @@ C:\Users\Gdy\Blender\blender-4.5.13-windows-x64\blender.exe `
 
 ### 3.1 安装（三步，本机还没做）
 
+#### ✅ 已经装好了（2026-09-13）
+
+| 步 | 状态 |
+|---|---|
+| `uv` / `uvx` | ✅ **0.12.5**，pip 方式装的；可执行文件在 `C:\Users\Gdy\AppData\Roaming\Python\Python310\Scripts\uvx.exe`（**不在 PATH**，所以要写全路径） |
+| Blender addon | ✅ 已装到 `%APPDATA%\Blender Foundation\Blender\4.5\scripts\addons\blender_mcp.py`（175KB，**端口 9876**） |
+| 接进 Codex | ✅ `codex mcp add blender -- <uvx 全路径> blender-mcp`，`codex mcp list` 里状态 **enabled** |
+
+#### ⚠️ 还差两步，其中一步只能由人做
+
+1. **（人做）打开 Blender** → `Edit → Preferences → Add-ons` →
+   启用 **"Interface: MCP for Blender"**（新装的话要 disable 再 enable，或重启 Blender）→
+   在右侧边栏（N 面板）点 **Start MCP Server**。
+   **没有这一步，MCP 那端连不上**（它连的是 Blender 里的 socket）。
+2. **（要开新会话）新开一个 Codex 任务**。
+   **MCP 工具是在会话启动时加载的**——当前这条会话里看不到 `blender` 的工具，
+   哪怕它已经 enabled。这不是故障，是加载时机。
+
 ```powershell
 # 1) 装 uv（官方安装器；文档特意提醒：别用 pip install uv，否则可能没有 uvx）
 #    https://docs.astral.sh/uv/getting-started/installation/
