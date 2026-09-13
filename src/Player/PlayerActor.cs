@@ -130,6 +130,23 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 	public int HalfAutoGuardUsedInWindow => _autoGuardUsedInWindow;
 
 	private int _guardBreakShowFrames;
+
+	// ── 蓄力斩（T46）────────────────────────────────────────────
+	// **轻攻击仍然是按下瞬间出**（M1 的手感不能动）。
+	// 蓄力是"**按住不放**"才会走到的那条路：松开时若已过某段阈值，就打那一记。
+	// 与《只狼》一致——先挥一刀，按住转蓄力，松开出蓄力斩。
+	private int _attackHoldFrames;
+	private bool _attackHeldLastFrame;
+	private int _pendingReleaseHoldFrames;
+
+	/// <summary>最近一次蓄力斩的段位（0 ＝ 没有）。测试用。</summary>
+	public int LastChargedLevel { get; private set; }
+
+	/// <summary>打出过几次蓄力斩。测试用。</summary>
+	public int ChargedCount { get; private set; }
+
+	/// <summary>最近一次按下攻击键一共按住了多少帧。测试用。</summary>
+	public int LastAttackHoldFrames { get; private set; }
 	private int _autoGuardWindowStartFrame = int.MinValue;
 	private int _autoGuardUsedInWindow;
 
@@ -200,6 +217,7 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 		machine.Add(new HealState());
 		machine.Add(new IssenState());
 		machine.Add(new ReviveState());
+		machine.Add(new ChargedAttackState());
 	}
 
 	/// <summary>防御键是否按住（<see cref="IGuardInput"/>）。敌人不实现它，所以不受防御状态影响。</summary>
@@ -271,6 +289,9 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 		// 顺序即优先级：补给最后生效。
 		// 三个方法都用延迟切换（Change/ForceChange），同一个物理帧里
 		// 后面的调用会覆盖前面的 —— 所以"保命动作优先于补给动作"是白拿的。
+		// 蓄力斩（T46）**故意排在最前**：它是慢招，同一帧里保命动作应该盖过它。
+		TrackAttackCharge();
+		TryEnterChargedAttack();
 		TryEnterHeal();
 		TryEnterDodge();
 		TryEnterGuard();
@@ -278,6 +299,74 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 		// 半自动防御（T37 缺口③）**必须排在手动之后**：
 		// 手动弹开已经成的时候不许它抢功、更不许扣额度（见 TryHalfAutoGuard）。
 		TryHalfAutoGuard();
+	}
+
+	/// <summary>
+	/// 跟踪攻击键的**按住时长**，并在松开的那一帧记下来（T46）。
+	/// 判定本身在 <see cref="ChargedAttackSelector"/> 里（纯逻辑，有单测）；
+	/// 这里只负责数帧。
+	/// </summary>
+	private void TrackAttackCharge()
+	{
+		bool held = Input.IsActionPressed("attack");
+
+		if (Input.IsActionJustPressed("attack"))
+			_attackHoldFrames = 0;
+		else if (held)
+			_attackHoldFrames++;
+
+		if (!held && _attackHeldLastFrame)
+		{
+			LastAttackHoldFrames = _attackHoldFrames;
+			_pendingReleaseHoldFrames = _attackHoldFrames;
+			_attackHoldFrames = 0;
+		}
+
+		_attackHeldLastFrame = held;
+	}
+
+	/// <summary>
+	/// 松开攻击键后，若按住时长够了就打蓄力斩。阈值**只从招式数据读**（各段的 StartupFrames），
+	/// 不在代码里写死。够不着第一段就什么都不做——那次按键已经在按下时走过普通轻攻击了。
+	/// </summary>
+	private void TryEnterChargedAttack()
+	{
+		if (_pendingReleaseHoldFrames <= 0)
+			return;
+
+		int hold = _pendingReleaseHoldFrames;
+		_pendingReleaseHoldFrames = 0;
+
+		if (IsDead || Attacks is null)
+			return;
+
+		// 只能从"能出招"的状态起。一闪 / 闪避 / 喝血 / 硬直期间按出来的蓄力一律不算——
+		// 尤其是**一闪优先**：那次按键在按下时已经被 TryIssen 判过了。
+		if (Machine.Current is not (IdleState or MoveState or AttackState))
+			return;
+
+		int level = ChargedAttackSelector.ResolveLevel(
+			hold,
+			Attacks.Charged1?.StartupFrames ?? int.MaxValue,
+			Attacks.Charged2?.StartupFrames ?? int.MaxValue,
+			Attacks.Charged3?.StartupFrames ?? int.MaxValue);
+
+		AttackData? data = level switch
+		{
+			3 => Attacks.Charged3,
+			2 => Attacks.Charged2,
+			1 => Attacks.Charged1,
+			_ => null,
+		};
+
+		if (data is null || !Machine.Has<ChargedAttackState>())
+			return;
+
+		Machine.Get<ChargedAttackState>().Configure(data);
+		Machine.ForceChange<ChargedAttackState>();
+
+		LastChargedLevel = level;
+		ChargedCount++;
 	}
 
 	/// <summary>
