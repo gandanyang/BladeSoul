@@ -291,19 +291,23 @@ public partial class PlayerGapsTest : Node3D
 
         for (int f = 0; f < PoseFrames; f++)
         {
+            int attackFrame = -1;
+
+            // T38 之后防御不再是一个 bool，而是"进入防御后第几帧"（抬起/维持/放下三态）。
+            // 非防御动作要显式给 -1，否则会一直停在上一轮留下的防御姿态里。
+            animator.TrackGuard(kind == ActionKind.Guard ? f : -1);
+
             switch (kind)
             {
-                case ActionKind.Guard:
-                    animator.Guarding = true;
-                    break;
                 case ActionKind.Attack:
-                    if (f == 0) animator.PlayAttack();
+                    if (f == 0) animator.PlayAttack(0, 30);   // Dev 体检用固定帧数（真调用点都传招式数据）
+                    attackFrame = f;                          // T38：攻击姿势由逻辑帧算出
                     break;
                 case ActionKind.Issen:
-                    if (f == 0) animator.PlayIssen();
+                    if (f == 0) animator.PlayIssen(22);
                     break;
                 case ActionKind.Hit:
-                    if (f == 0) animator.PlayHitReact(2f);
+                    if (f == 0) animator.PlayHitReact(2f, 18);
                     break;
                 default:
                     // 闪避 / 喝血 / 跳跃 / 死亡：**animator 上根本没有对应接口**，
@@ -312,11 +316,11 @@ public partial class PlayerGapsTest : Node3D
             }
 
             // ★ 必须**照玩家实际的每帧调用路径**驱动。`PlayerActor.OnTickVisual` 每帧都是
-            //   先写 Guarding、再 `AnimateLocomotion(speed01)`、最后 `AnimateCombat`。
+            //   先写防御帧号、再 `AnimateLocomotion(speed01)`、最后 `AnimateCombat`。
             //   少调一次 AnimateLocomotion，骨架会停在静止姿态，
             //   量出来的是**假差**（第一次跑就是这么被骗的：四个没接口的动作全报 91.7°）。
             animator.AnimateLocomotion(kind == ActionKind.Walk ? 1f : 0f, dt);
-            animator.AnimateCombat(dt);
+            animator.AnimateCombat(dt, attackFrame);
 
             float[] current = Snapshot(skeleton);
 

@@ -26,8 +26,18 @@ public partial class BlockoutRig : Node3D
 	/// <summary>受击反应的时长倍率。破防用更长的一档，好和普通格挡一眼分开（T37）。</summary>
 	private float _hitReactDurationScale = 1f;
 
-	private const float AttackDuration = 0.5f;
-	private const float HitReactDuration = 0.22f;
+	// 同 HumanoidAnimator：时长**由调用方按逻辑帧传入**，不在这里写死（铁律 1 / 04 §12）。
+	private float _attackDuration;
+	private float _hitReactDuration;
+	private float _issenDuration;
+
+	/// <summary>
+	/// 帧 → 秒。和 <c>HumanoidAnimator.Seconds</c> 是同一个坑：
+	/// 原来是 `int / int` 的**整数除法**，小于 60 帧的时长全变 0，
+	/// 于是攻击/一闪/受击的姿势被整段跳过（表现就是"瞬间到位"）。
+	/// 统一走 <see cref="Utils.Frames.ToDelta"/>。
+	/// </summary>
+	private static float Seconds(int frames) => Utils.Frames.ToDelta(Mathf.Max(1, frames));
 
 	/// <summary>破防后仰的时长倍率（T37 缺口②）：普通受击 0.22s → 破防 0.46s。</summary>
 	private const float GuardBreakDurationScale = 2.1f;
@@ -86,8 +96,9 @@ public partial class BlockoutRig : Node3D
 		_body.Position = new Vector3(0f, bob, 0f);
 	}
 
-	public void PlayAttack()
+	public void PlayAttack(int totalFrames)
 	{
+		_attackDuration = Seconds(totalFrames);
 		_attackElapsed = 0f;
 	}
 
@@ -95,14 +106,19 @@ public partial class BlockoutRig : Node3D
 	/// 一闪的动作（T20）：**快速斜斩 + 收势停顿**。灰盒期不新建模型，只改姿势。
 	/// 它与普通攻击的区别全在节奏上——斩得极快，然后定格，像"比谁都慢了一拍"。
 	/// </summary>
-	public void PlayIssen() => _issenElapsed = 0f;
+	public void PlayIssen(int durationFrames)
+	{
+		_issenDuration = Seconds(durationFrames);
+		_issenElapsed = 0f;
+	}
 
 	/// <summary>
 	/// 受击反馈：后仰 + 抖动。灰盒阶段唯一能让人"感觉到打中了"的东西，
 	/// 所以它必须存在——没有它，命中就只是一个数字变化。
 	/// </summary>
-	public void PlayHitReact(float strength)
+	public void PlayHitReact(float strength, int stunFrames)
 	{
+		_hitReactDuration = Seconds(stunFrames);
 		_hitReactElapsed = 0f;
 		_hitReactStrength = Mathf.Clamp(strength, 0f, 2f);
 		_hitReactDurationScale = 1f;
@@ -129,7 +145,7 @@ public partial class BlockoutRig : Node3D
 		if (_hitReactElapsed >= 0f)
 		{
 			_hitReactElapsed += delta;
-			float reactT = Mathf.Clamp(_hitReactElapsed / (HitReactDuration * _hitReactDurationScale), 0f, 1f);
+			float reactT = Mathf.Clamp(_hitReactElapsed / (Mathf.Max(0.0001f, _hitReactDuration) * _hitReactDurationScale), 0f, 1f);
 			float falloff = (1f - reactT) * (1f - reactT) * _hitReactStrength;
 
 			_headPivotLean = -0.55f * falloff;
@@ -156,7 +172,7 @@ public partial class BlockoutRig : Node3D
 		}
 
 		_attackElapsed += delta;
-		float t = Mathf.Clamp(_attackElapsed / AttackDuration, 0f, 1f);
+		float t = Mathf.Clamp(_attackElapsed / Mathf.Max(0.0001f, _attackDuration), 0f, 1f);
 		float eased = 1f - Mathf.Pow(1f - t, 3f);
 
 		ArmRight.Rotation = new Vector3(Mathf.Lerp(-2.4f, 1.5f, eased), 0f, 0.1f);

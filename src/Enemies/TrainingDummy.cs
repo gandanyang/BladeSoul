@@ -54,12 +54,12 @@ public partial class TrainingDummy : CombatActor
 		_rig.AnimateCombat(dt);
 	}
 
-	protected override void OnDamaged(int damage) => _rig.PlayHitReact(1f);
+	protected override void OnDamaged(int damage) => _rig.PlayHitReact(1f, HitStunFrames);
 
 	protected override void OnVerdictReceived(in ResolveResult result)
 	{
 		if (result.Verdict is Combat.Verdict.Block or Combat.Verdict.Deflect or Combat.Verdict.Clash)
-			_rig.PlayHitReact(0.5f);
+			_rig.PlayHitReact(0.5f, HitStunFrames);
 	}
 
 	/// <summary>体干破裂后立刻回满，这样它可以被无限次练（道场的基本要求）。</summary>

@@ -74,7 +74,7 @@ public partial class AttackingDummy : CombatActor
 		base.OnAttackStarted(data);
 
 		_attackFrames.Add((int)Engine.GetPhysicsFrames());
-		_rig.PlayAttack();
+		_rig.PlayAttack(data.TotalFrames);
 	}
 
 	/// <summary>攻击结束才起算冷却，这样"间隔"说的是两次**发动**之间的间隔。</summary>
@@ -105,12 +105,12 @@ public partial class AttackingDummy : CombatActor
 		_rig.AnimateCombat(dt);
 	}
 
-	protected override void OnDamaged(int damage) => _rig.PlayHitReact(1f);
+	protected override void OnDamaged(int damage) => _rig.PlayHitReact(1f, HitStunFrames);
 
 	protected override void OnVerdictReceived(in ResolveResult result)
 	{
 		if (result.Verdict is Combat.Verdict.Block or Combat.Verdict.Deflect or Combat.Verdict.Clash)
-			_rig.PlayHitReact(0.5f);
+			_rig.PlayHitReact(0.5f, HitStunFrames);
 	}
 
 	/// <summary>体干破裂后立刻回满：它是节拍器，被连段打乱节奏就没法练了。</summary>

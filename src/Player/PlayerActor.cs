@@ -814,8 +814,8 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 
 		// 演出：灰盒期先复用一次大幅度的受击反馈（"倒下去再撑起来"），
 		// 专门的起身姿势属于动画管线（T24/T25）。
-		_rig.PlayHitReact(2f);
-		_skinAnimator?.PlayHitReact(2f);
+		_rig.PlayHitReact(2f, HitStunFrames);
+		_skinAnimator?.PlayHitReact(2f, HitStunFrames);
 
 		Machine.ForceChange<ReviveState>();
 	}
@@ -1098,7 +1098,7 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 		state.GuardInstead = guardInstead;
 
 		if (playSlash)
-			_rig.PlayIssen();
+			_rig.PlayIssen(state.DurationFrames);
 
 		// 用 ForceChange：一闪必须能打断当前动作（02 §3 裁定：一闪应对一切攻击）。
 		Machine.ForceChange<IssenState>();
@@ -1182,9 +1182,18 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 		// 基类实现负责「危」攻击的预警（T12）。玩家现在没有危招式，
 		// 但覆写时不调 base 是个定时炸弹——等哪天真加了就会静默丢失预警。
 		base.OnAttackStarted(data);
-		_rig.PlayAttack();
-		_skinAnimator?.PlayAttack();
+		_rig.PlayAttack(data.TotalFrames);
+
+		// T38：把**这是第几段连击**告诉动画器——三段各有各的刀路，
+		// 不能是"同一个挥砍换幅度"（那正是这次试玩反馈骂的那件事）。
+		_skinAnimator?.PlayAttack(CurrentComboStep(), data.TotalFrames);
 	}
+
+	/// <summary>当前连击进行到第几段（0 起）。取不到就按第一段处理。</summary>
+	private int CurrentComboStep() =>
+		Machine.Has<AttackState>() && Machine.Get<AttackState>().Sequence.IsRunning
+			? Mathf.Max(0, Machine.Get<AttackState>().Sequence.StepIndex)
+			: 0;
 
 	protected override void OnTickVisual(float dt, float speed01)
 	{
@@ -1193,16 +1202,18 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 
 		if (_skinAnimator is not null)
 		{
-			_skinAnimator.Guarding = IsGuarding;
+			// T38：防御改成**三态**（抬起/维持/放下），靠"进入防御后的帧号"驱动；
+			// 攻击姿势同样由**状态自己的帧号**算出，所以动画与逻辑不会漂（04 §12）。
+			_skinAnimator.TrackGuard(Machine.Current is GuardState guard ? guard.Frame : -1);
 			_skinAnimator.AnimateLocomotion(speed01, dt);
-			_skinAnimator.AnimateCombat(dt);
+			_skinAnimator.AnimateCombat(dt, Machine.Current is AttackState attack ? attack.Frame : -1);
 		}
 	}
 
 	protected override void OnDamaged(int damage)
 	{
-		_rig.PlayHitReact(1f);
-		_skinAnimator?.PlayHitReact(1f);
+		_rig.PlayHitReact(1f, HitStunFrames);
+		_skinAnimator?.PlayHitReact(1f, HitStunFrames);
 	}
 
 	protected override void OnVerdictReceived(in ResolveResult result)
@@ -1210,12 +1221,18 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 		// 弹开的顿帧、体干、弹一闪 buff、连击数全在 CombatActor.ReceiveVerdict 里结算完了，
 		// 这里只负责"表现层进弹开状态"（T6 规则 6）。
 		if (result.Verdict == Combat.Verdict.Deflect)
+		{
 			Machine.ForceChange<DeflectState>();
+
+			// T38：弹开要有**专用姿势**。这一条是本项目的立命之本——
+			// 之前弹开只有粒子和音效，人物姿势和普通格挡一模一样，等于"接住了"这件事没被看见。
+			_skinAnimator?.PlayDeflect(Machine.Get<DeflectState>().TotalFrames);
+		}
 
 		if (result.Verdict is Combat.Verdict.Block or Combat.Verdict.Deflect or Combat.Verdict.Clash)
 		{
-			_rig.PlayHitReact(0.5f);
-			_skinAnimator?.PlayHitReact(0.5f);
+			_rig.PlayHitReact(0.5f, HitStunFrames);
+			_skinAnimator?.PlayHitReact(0.5f, HitStunFrames);
 		}
 
 		// 一闪结算成功 → 现在才播那一刀（T20）。
@@ -1224,8 +1241,9 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 		// 这条也是**弹一闪**（弹开 → buff → 敌人下一刀被一闪）唯一能播到动画的地方。
 		if (result.Verdict == Combat.Verdict.Issen)
 		{
-			_rig.PlayIssen();
-			_skinAnimator?.PlayIssen();
+			int issenFrames = Machine.Get<IssenState>().DurationFrames;
+			_rig.PlayIssen(issenFrames);
+			_skinAnimator?.PlayIssen(issenFrames);
 		}
 	}
 }

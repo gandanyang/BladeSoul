@@ -14,6 +14,9 @@ public partial class EnemyController : CharacterBody3D
 	[Export] public Color BodyColor { get; set; } = new Color(0.4f, 0.16f, 0.14f);
 	[Export] public Color AccentColor { get; set; } = new Color(0.12f, 0.12f, 0.14f);
 
+	/// <summary>灰盒敌人的挥砍动画时长（帧）。它不是真招式，所以时长走场景导出值（T38 之前它没有招式数据）。</summary>
+	[Export] public int AttackAnimFrames { get; set; } = 30;
+
 	private enum State { Idle, Chase, Attack }
 
 	private State _state = State.Idle;
@@ -62,7 +65,7 @@ public partial class EnemyController : CharacterBody3D
 		if (_state == State.Attack && _attackTimer <= 0f)
 		{
 			_attackTimer = AttackCooldown;
-			_rig.PlayAttack();
+			_rig.PlayAttack(AttackAnimFrames);
 		}
 
 		velocity.X = Mathf.MoveToward(velocity.X, desiredVelocity.X, Acceleration * dt);
