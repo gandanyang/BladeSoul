@@ -173,10 +173,17 @@ public class HumanoidAnimator
 
 		Phase = GuardPhase.None;
 
-		Rot("L_Thigh", swing * 0.8f);
-		Rot("R_Thigh", -swing * 0.8f);
-		Rot("L_Calf", -Mathf.Max(0f, Mathf.Sin(_phase)) * 0.9f * Mathf.Min(speed01, 1f));
-		Rot("R_Calf", -Mathf.Max(0f, -Mathf.Sin(_phase)) * 0.9f * Mathf.Min(speed01, 1f));
+        Rot("L_Thigh", swing * 0.8f);
+        Rot("R_Thigh", -swing * 0.8f);
+        Rot("L_Calf", -Mathf.Max(0f, Mathf.Sin(_phase)) * 0.9f * Mathf.Min(speed01, 1f));
+        Rot("R_Calf", -Mathf.Max(0f, -Mathf.Sin(_phase)) * 0.9f * Mathf.Min(speed01, 1f));
+        // ★ 骨盆要跟着迈步转（试玩反馈："身体移动腿不动"）。
+        // 原来这里**从来没有摆过 Hip**——腿在摆，但骨盆不动、重心不转移，
+        // 于是整体观感是"下半身一整块平移过去"，而不是"人在走"。
+        // 骨盆一转，两条腿就被"带"起来了，这是走路能被读出来的关键。
+        Rot("Hip", swing * 0.22f);
+        // 躯干反向微转（对侧手臂与肩的自然联动），幅度小，别抢戏。
+        Rot("Spine02", -swing * 0.12f);
 		Rot("L_Upperarm", -swing * 0.6f);
 		Rot("R_Upperarm", swing * 0.6f);
 		Rot("L_Forearm", -Mathf.Abs(swing) * 0.25f);

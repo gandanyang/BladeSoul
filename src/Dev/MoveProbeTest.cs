@@ -44,11 +44,14 @@ public partial class MoveProbeTest : Node3D
 
         int lt = skel.FindBone("L_Thigh");
         int rt = skel.FindBone("R_Thigh");
+        int hip = skel.FindBone("Hip");
 
         Quaternion restL = lt >= 0 ? skel.GetBonePoseRotation(lt) : Quaternion.Identity;
         Quaternion restR = rt >= 0 ? skel.GetBonePoseRotation(rt) : Quaternion.Identity;
+        Quaternion restHip = hip >= 0 ? skel.GetBonePoseRotation(hip) : Quaternion.Identity;
 
         float peakLeg = 0f;
+        float peakHip = 0f;
         float peakSpeed = 0f;
         Vector3 start = player.GlobalPosition;
 
@@ -67,6 +70,9 @@ public partial class MoveProbeTest : Node3D
             if (rt >= 0)
                 peakLeg = Mathf.Max(peakLeg,
                     Mathf.RadToDeg(restR.AngleTo(skel.GetBonePoseRotation(rt))));
+            if (hip >= 0)
+                peakHip = Mathf.Max(peakHip,
+                    Mathf.RadToDeg(restHip.AngleTo(skel.GetBonePoseRotation(hip))));
 
             if (f % 60 == 0)
             {
@@ -86,7 +92,11 @@ public partial class MoveProbeTest : Node3D
 
         GD.Print("");
         GD.Print($"[移动体检] 3 秒内：峰值速度 {peakSpeed:F2} m/s，实际移动 {totalMoved:F2} m，"
-                 + $"大腿骨峰值偏转 {peakLeg:F1}°");
+                 + $"大腿骨峰值偏转 {peakLeg:F1}°，骨盆峰值偏转 {peakHip:F1}°");
+
+        GD.Print(peakHip < 3f
+            ? "[移动体检] ✗ 骨盆完全没动（Hip 0°）—— 下半身是一整块平移过去的，所以像滑"
+            : $"[移动体检] ✓ 骨盆跟着迈步转（{peakHip:F1}°）—— 重心有转移，走路读得出来");
 
         if (peakSpeed > 0.5f && peakLeg < 5f)
             GD.Print("[移动体检] ✗ **速度是真的、腿没动** —— 游戏里没人把'我在走'喂给动画器");
