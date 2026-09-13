@@ -32,5 +32,3 @@ Hurtbox.cs::IsWeakPoint
 #      src/UI/Hud.cs:545        MakeRect(_enemyPanel, EnemyPostureColor, ...)
 #    同文件内的其它颜色字段（PlayerHealthColor 等）都没被报，所以不是"只算跨文件引用"的规则，
 #    而是这两个名字触发了某个边界情况。工具修好后删掉下面两行。
-EnemyBars.cs::PostureColor
-Hud.cs::EnemyPostureColor
