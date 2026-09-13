@@ -9,6 +9,7 @@
 [ext_resource type="PackedScene" path="res://assets/models/model_player_congyun_01.glb" id="7_model"]
 [ext_resource type="Script" path="res://src/Player/FallGuard.cs" id="8_fallguard"]
 [ext_resource type="Resource" path="res://data/player/fall_recovery.tres" id="9_fallprofile"]
+[ext_resource type="Resource" path="res://data/player/jump.tres" id="10_jumpprofile"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
 radius = 0.35
@@ -31,6 +32,7 @@ Attacks = ExtResource("3_combo")
 Difficulty = ExtResource("4_difficulty")
 VisualModel = ExtResource("7_model")
 VisualModelScale = 1.75
+JumpProfile = ExtResource("10_jumpprofile")
 
 [node name="FallGuard" type="Node3D" parent="."]
 script = ExtResource("8_fallguard")

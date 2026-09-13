@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="JumpProfile" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/Player/JumpProfile.cs" id="1_jump"]
+
+[resource]
+script = ExtResource("1_jump")
+TakeoffSpeed = 5.5
+LandRecoveryFrames = 12

@@ -18,6 +18,9 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 	private static readonly PlayerAction[] WatchedActions = Enum.GetValues<PlayerAction>();
 
 	[Export] public float MouseSensitivity { get; set; } = 0.0025f;
+
+	/// <summary>跳跃参数（T41）。见 <see cref="JumpProfile"/>。</summary>
+	[Export] public JumpProfile? JumpProfile { get; set; }
 	[Export] public float MinPitch { get; set; } = -70f;
 	[Export] public float MaxPitch { get; set; } = 40f;
 
@@ -218,6 +221,7 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 		machine.Add(new IssenState());
 		machine.Add(new ReviveState());
 		machine.Add(new ChargedAttackState());
+		machine.Add(new JumpState());
 	}
 
 	/// <summary>防御键是否按住（<see cref="IGuardInput"/>）。敌人不实现它，所以不受防御状态影响。</summary>
@@ -294,11 +298,34 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 		TryEnterChargedAttack();
 		TryEnterHeal();
 		TryEnterDodge();
+		TryEnterJump();
 		TryEnterGuard();
 
 		// 半自动防御（T37 缺口③）**必须排在手动之后**：
 		// 手动弹开已经成的时候不许它抢功、更不许扣额度（见 TryHalfAutoGuard）。
 		TryHalfAutoGuard();
+	}
+
+	/// <summary>
+	/// 跳跃（T41）。**只在"能自由行动"的状态起跳**——闪避/受击/一闪期间按跳不算，
+	/// 否则玩家能在受罚时用跳跃把自己救出来，那就等于给了一个免费的取消手段。
+	/// 数值全部来自 <see cref="JumpProfile"/>（data/player/jump.tres）。
+	/// </summary>
+	private void TryEnterJump()
+	{
+		if (!Input.IsActionJustPressed("jump") || IsDead)
+			return;
+
+		if (Machine.Current is not (IdleState or MoveState))
+			return;
+
+		if (!Machine.Has<JumpState>())
+			return;
+
+		if (JumpProfile is not null)
+			Machine.Get<JumpState>().Configure(JumpProfile.TakeoffSpeed, JumpProfile.LandRecoveryFrames);
+
+		Machine.ForceChange<JumpState>();
 	}
 
 	/// <summary>

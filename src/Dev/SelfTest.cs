@@ -174,7 +174,7 @@ public partial class SelfTest : Node
         if (path.Contains("/player/"))
         {
             _playerData++;
-            if (resource is Oniblade.World.FallRecoveryProfile)
+            if (resource is Oniblade.World.FallRecoveryProfile or Oniblade.Player.JumpProfile)
                 return;
 
             _errors.Add($"{path} 不是 FallRecoveryProfile（实际 {resource.GetType().Name}）");
