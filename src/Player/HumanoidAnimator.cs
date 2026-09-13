@@ -363,13 +363,28 @@ public class HumanoidAnimator
 				Rot("L_Upperarm", up + 0.12f, Mathf.Lerp(0.80f, -0.50f, strikeEase));
 				Rot("R_Forearm", Mathf.Lerp(0.45f, -0.60f, strikeEase));
 				Rot("L_Forearm", Mathf.Lerp(0.40f, -0.65f, strikeEase));
-				Rot("Spine01", Mathf.Lerp(-0.30f, 0.42f, strikeEase));
-				Rot("Spine02", Mathf.Lerp(-0.22f, 0.28f, strikeEase));
-				Rot("Head", Mathf.Lerp(0.16f, -0.14f, strikeEase));
-				Rot("L_Thigh", -0.10f * strikeEase);
-				Rot("R_Thigh", -0.22f * strikeEase);
-				break;
-		}
+			Rot("Spine01", Mathf.Lerp(-0.30f, 0.42f, strikeEase));
+			Rot("Spine02", Mathf.Lerp(-0.22f, 0.28f, strikeEase));
+			Rot("Head", Mathf.Lerp(0.16f, -0.14f, strikeEase));
+			break;
+				}
+
+		// ★ **弓步**：踏进去，而不是站在原地挥手。
+		//
+		// 这一段是试玩反馈"砍上去像滑过去"的另一半：上一版只有持刀臂在动，
+		// `Hip` 与双腿实测**全程 0.0°**——人平移 0.8~1.5 米而腿一动不动。
+		// 两条腿**反向**转（前腿迈出、后腿蹬地）才读得出"这一步是踩下去的"，
+		// 同向转只会变成下蹲。三段方向一致（都是右手刀），幅度逐段加大：
+		// 第三段是双手大上段劈，跨得最开。
+		float lunge = 0.32f + 0.18f * _attackStep;      // 0.32 / 0.50 / 0.68 弧度
+		Rot("L_Thigh", -lunge * strikeEase);
+		Rot("R_Thigh", lunge * 0.78f * strikeEase);
+		Rot("L_Calf", -lunge * 0.55f * strikeEase);
+		Rot("R_Calf", -lunge * 0.22f * strikeEase);
+
+		// 骨盆跟着刀路转：第一/三段刀向前压（+），第二段反手刀路反着来（-）。
+		// 骨盆一转，重心就转移了——这是"人"和"木偶"的分界线。
+		Rot("Hip", (_attackStep == 1 ? -0.22f : 0.22f) * strikeEase);
 	}
 
 	/// <summary>绕两个轴设置骨骼姿势。两个自由度才做得出一眼可分的刀路。</summary>
