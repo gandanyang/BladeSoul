@@ -3,9 +3,7 @@
 # 里面的每条都是已知的死配置，允许暂时存在；修好一条就删一行。
 # check_dead_config.ps1 会把"已修好但没删行"的也报出来。
 # **基线的作用是"只许减少、不许新增"。**
-#
 # 格式：<声明所在文件名>::<字段名>
-
 ActorStats.cs::AttackMoveSpeed
 BossAiOverrides.cs::AttackIntervalScale
 BossAiOverrides.cs::MoveSpeedScale
@@ -28,3 +26,11 @@ DifficultyProfile.cs::ShowParryRhythm
 DifficultyProfile.cs::ShowPerilousCue
 Hurtbox.cs::DamageMultiplier
 Hurtbox.cs::IsWeakPoint
+# ↓ 2026-09-13 疑似棘轮误报，待修工具后可从基线删掉：
+#    这两个字段在声明文件内**确实被使用**，rg 能搜到：
+#      src/UI/EnemyBars.cs:349  MakeRect(root, PostureColor, ...)
+#      src/UI/Hud.cs:545        MakeRect(_enemyPanel, EnemyPostureColor, ...)
+#    同文件内的其它颜色字段（PlayerHealthColor 等）都没被报，所以不是"只算跨文件引用"的规则，
+#    而是这两个名字触发了某个边界情况。工具修好后删掉下面两行。
+EnemyBars.cs::PostureColor
+Hud.cs::EnemyPostureColor
