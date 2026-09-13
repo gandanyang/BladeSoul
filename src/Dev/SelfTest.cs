@@ -31,6 +31,9 @@ public partial class SelfTest : Node
     /// <summary>遭遇战配置（T42）。</summary>
     private int _encounters;
 
+    /// <summary>BOSS 阶段数据（T9）。</summary>
+    private int _bossPhases;
+
     public override void _Ready()
     {
         Scan("res://data");
@@ -169,6 +172,18 @@ public partial class SelfTest : Node
                 return;
 
             _errors.Add($"{path} 不是 Material（实际 {resource.GetType().Name}）");
+            return;
+        }
+
+        // data/bosses/ 下是 BOSS 阶段数据（T9 / 08 §3 P2-2）。**阶段是数据，不是代码分支。**
+        if (path.Contains("/bosses/"))
+        {
+            _bossPhases++;
+            if (resource is Oniblade.Combat.Data.BossPhaseProfile
+                or Oniblade.Combat.Data.BossAiOverrides)
+                return;
+
+            _errors.Add($"{path} 不是 BossPhaseProfile / BossAiOverrides（实际 {resource.GetType().Name}）");
             return;
         }
 
