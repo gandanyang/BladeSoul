@@ -36,6 +36,9 @@ public partial class TutorialDirector : Node3D
 
     [ExportGroup("台词")]
     [Export] public string DialoguePath { get; set; } = "res://data/dialogue/tutorial_act1.json";
+
+    /// <summary>要用的对话框（在关卡场景里指过来）。留空＝只跑规则不显示，测试就是这么跑的。</summary>
+    [Export] public DialogueBox? Box { get; set; }
     [Export] public string MoveHint { get; set; } = "站着不动，剑不会自己走。";
     [Export] public string LightHint { get; set; } = "三下。连着来。";
     [Export] public string ChargedHint { get; set; } = "按住。别急着松。";
@@ -55,6 +58,7 @@ public partial class TutorialDirector : Node3D
     public int DialogueSetCount { get; private set; }
 
     private readonly TutorialLogic _logic = new();
+    private DialogueCatalogue? _lines;
     private PlayerActor? _player;
     private Vector3 _origin;
     private float _travelled;
@@ -68,7 +72,10 @@ public partial class TutorialDirector : Node3D
         _logic.HintsAfterFailures = HintsAfterFailures;
 
         if (ResourceLoader.Exists(DialoguePath))
-            DialogueSetCount = DialogueCatalogue.Load(DialoguePath).Count;
+        {
+            _lines = DialogueCatalogue.Load(DialoguePath);
+            DialogueSetCount = _lines.Count;
+        }
         else
             GD.PrintErr($"[教学] 找不到台词表：{DialoguePath}");
     }
@@ -109,6 +116,14 @@ public partial class TutorialDirector : Node3D
         {
             BeatsPassed++;
             GD.Print($"[教学] 第 {BeatsPassed} 段过了（{before}）→ 现在教 {_logic.Beat}");
+
+            // 过一段就播那一段的师父台词（叙事，不是奖励——所以它跟着剧情节拍走）。
+            ShowSet(before switch
+            {
+                TutorialBeat.Move => "act1_lesson_1",
+                TutorialBeat.LightAttack => "act1_lesson_2",
+                _ => "act1_lesson_3",
+            });
             return;
         }
 
@@ -131,6 +146,16 @@ public partial class TutorialDirector : Node3D
         };
 
         GD.Print($"[教学] 师父的声音（{_logic.Beat}，已失败 {_logic.FailureCount} 次）：{LastHint}");
+    }
+
+    /// <summary>播一组教学台词——走 <see cref="DialogueBox.ShowExternal"/>，不换盒子自己的常驻台词表。</summary>
+    private void ShowSet(string setId)
+    {
+        if (Box is null || _lines is null)
+            return;
+
+        if (Box.ShowExternal(_lines, setId))
+            GD.Print($"[教学] 台词组 {setId} 已交给对话框");
     }
 
     private PlayerActor? FindPlayer()

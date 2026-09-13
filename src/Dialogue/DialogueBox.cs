@@ -88,6 +88,26 @@ public partial class DialogueBox : CanvasLayer
 		return true;
 	}
 
+	/// <summary>
+	/// 用**外部台词表**说一组（T47：序章第一幕的师父台词走这条路）。
+	///
+	/// 为什么不直接换掉 <see cref="Catalogue"/>：那个是本盒子的常驻台词表（绫的那份），
+	/// F9/F10 的调试循环、以及 80/20 那几条自检都盯着它。**临时借一张表来播**，
+	/// 播完盒子还是原来那个盒子——这样加教学台词就不会连累已经通过的对话自检。
+	/// </summary>
+	public bool ShowExternal(DialogueCatalogue catalogue, string setId)
+	{
+		DialogueSet? set = catalogue.Get(setId);
+		if (set is null)
+		{
+			GD.PushError($"[对话] 外部台词表里没有这组：{setId}");
+			return false;
+		}
+
+		StartSet(set);
+		return true;
+	}
+
 	/// <summary>推进一句。说完了自动收起。</summary>
 	public void Advance()
 	{
