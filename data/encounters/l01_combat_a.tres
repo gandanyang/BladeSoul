@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="EncounterProfile" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/Levels/EncounterProfile.cs" id="1_enc"]
+
+[resource]
+script = ExtResource("1_enc")
+ActivationRadius = 9.0
+EnemyScenePath = "res://scenes/actors/enemies/Enemy.tscn"
+EnemyCount = 3
+SpawnRadius = 5.0
+ClearHoldFrames = 12

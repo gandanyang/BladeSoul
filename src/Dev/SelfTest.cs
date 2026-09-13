@@ -28,6 +28,9 @@ public partial class SelfTest : Node
     /// <summary>玩家侧的关卡外参数（T45 掉落保护）。</summary>
     private int _playerData;
 
+    /// <summary>遭遇战配置（T42）。</summary>
+    private int _encounters;
+
     public override void _Ready()
     {
         Scan("res://data");
@@ -166,6 +169,17 @@ public partial class SelfTest : Node
                 return;
 
             _errors.Add($"{path} 不是 Material（实际 {resource.GetType().Name}）");
+            return;
+        }
+
+        // data/encounters/ 下是遭遇战配置（T42）。
+        if (path.Contains("/encounters/"))
+        {
+            _encounters++;
+            if (resource is Oniblade.Levels.EncounterProfile)
+                return;
+
+            _errors.Add($"{path} 不是 EncounterProfile（实际 {resource.GetType().Name}）");
             return;
         }
 
