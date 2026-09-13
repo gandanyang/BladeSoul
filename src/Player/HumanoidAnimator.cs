@@ -173,10 +173,15 @@ public class HumanoidAnimator
 
 		Phase = GuardPhase.None;
 
-        Rot("L_Thigh", swing * 0.8f);
-        Rot("R_Thigh", -swing * 0.8f);
-        Rot("L_Calf", -Mathf.Max(0f, Mathf.Sin(_phase)) * 0.9f * Mathf.Min(speed01, 1f));
-        Rot("R_Calf", -Mathf.Max(0f, -Mathf.Sin(_phase)) * 0.9f * Mathf.Min(speed01, 1f));
+        // 摆幅：原来 ±0.8 弧度（全速约 ±46°），但实战里 speed01 只有 ~0.7，
+        // 落到腿上只有 27°，配上"没有骨盆"就成了滑步。现在抬到 1.15 并**保底一个最小值**：
+        // 只要在走（speed01 > 0.15），腿就至少摆到能看出来的程度——
+        // 玩家读的是"腿在迈"，不是"角度精确"。
+        float step = Mathf.Max(0.35f, Mathf.Min(speed01, 1f)) * 1.15f;
+        Rot("L_Thigh", Mathf.Sin(_phase) * step);
+        Rot("R_Thigh", -Mathf.Sin(_phase) * step);
+        Rot("L_Calf", -Mathf.Max(0f, Mathf.Sin(_phase)) * step * 1.1f);
+        Rot("R_Calf", -Mathf.Max(0f, -Mathf.Sin(_phase)) * step * 1.1f);
         // ★ 骨盆要跟着迈步转（试玩反馈："身体移动腿不动"）。
         // 原来这里**从来没有摆过 Hip**——腿在摆，但骨盆不动、重心不转移，
         // 于是整体观感是"下半身一整块平移过去"，而不是"人在走"。
