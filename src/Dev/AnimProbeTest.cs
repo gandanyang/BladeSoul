@@ -142,6 +142,19 @@ public partial class AnimProbeTest : Node3D
                 float deg = Mathf.RadToDeg(idle[name].AngleTo(skel.GetBonePoseRotation(bone)));
                 peak[name] = Mathf.Max(peak[name], deg);
             }
+
+            // 一次性诊断：Hip 到底有没有被写进去。
+            // （腿生效而骨盆不生效，不合常理——原始四元数一看就知道。）
+            if (f == 25)
+            {
+                int hipBone = skel.FindBone("Hip");
+                if (hipBone >= 0 && idle.ContainsKey("Hip"))
+                {
+                    Quaternion now = skel.GetBonePoseRotation(hipBone);
+                    GD.Print($"[动画体检] （诊断）第 25 帧 Hip：静止 {idle["Hip"]} → 当前 {now}"
+                             + $"，夹角 {Mathf.RadToDeg(idle["Hip"].AngleTo(now)):F2}°");
+                }
+            }
         }
 
         GD.Print("[动画体检] 轻斩·壹：每根骨相对静止姿势的最大偏转");
