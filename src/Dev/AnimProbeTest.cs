@@ -148,7 +148,119 @@ public partial class AnimProbeTest : Node3D
         foreach (string name in AllNames())
             GD.Print($"[动画体检]   {name,-12} {peak[name],7:F1}°");
 
+        // ── 走路：腿到底动没动（"模型移动问题"通常就是这里）────────────
+        // 挥手挥得再大，只要腿不动，人就是"飘"过去的——这就是滑步。
+        var idle2 = new Dictionary<string, Quaternion>();
+        foreach (string name in AllNames())
+        {
+            int bone = skel.FindBone(name);
+            if (bone >= 0)
+                idle2[name] = skel.GetBonePoseRotation(bone);
+        }
+
+        var walkPeak = new Dictionary<string, float>();
+        foreach (string name in AllNames())
+            walkPeak[name] = 0f;
+
+        for (int f = 0; f < 120; f++)
+        {
+            animator.AnimateLocomotion(1f, 1f / 60f);   // 全速走
+            animator.AnimateCombat(1f / 60f, -1);
+
+            foreach (string name in AllNames())
+            {
+                int bone = skel.FindBone(name);
+                if (bone < 0 || !idle2.ContainsKey(name))
+                    continue;
+
+                float deg = Mathf.RadToDeg(idle2[name].AngleTo(skel.GetBonePoseRotation(bone)));
+                walkPeak[name] = Mathf.Max(walkPeak[name], deg);
+            }
+        }
+
+        GD.Print("[动画体检] 走路（全速，2 秒）：每根骨相对静止姿势的最大偏转");
+        foreach (string name in AllNames())
+            GD.Print($"[动画体检]   {name,-12} {walkPeak[name],7:F1}°");
+
+        float legMotion = Mathf.Max(
+            Mathf.Max(walkPeak["L_Thigh"], walkPeak["R_Thigh"]),
+            Mathf.Max(walkPeak["L_Calf"], walkPeak["R_Calf"]));
+
+        GD.Print(legMotion < 5f
+            ? $"[动画体检] ✗ 走路时腿几乎不动（最大 {legMotion:F1}°）—— **这就是滑步**"
+            : $"[动画体检] ✓ 走路时腿在动（最大 {legMotion:F1}°）");
+
+        // ── 两腿是"交替"还是"同相"（同相＝像兔子蹦）──────────────────
+        float maxPhaseGap = 0f;
+        for (int f = 0; f < 120; f++)
+        {
+            animator.AnimateLocomotion(1f, 1f / 60f);
+            animator.AnimateCombat(1f / 60f, -1);
+
+            int lt = skel.FindBone("L_Thigh");
+            int rt = skel.FindBone("R_Thigh");
+            if (lt < 0 || rt < 0)
+                break;
+
+            float gap = Mathf.RadToDeg(
+                skel.GetBonePoseRotation(lt).AngleTo(skel.GetBonePoseRotation(rt)));
+            maxPhaseGap = Mathf.Max(maxPhaseGap, gap);
+        }
+
+        GD.Print(maxPhaseGap < 5f
+            ? $"[动画体检] ✗ 两条大腿**同相**（最大夹角差只有 {maxPhaseGap:F1}°）—— 走路会像兔子蹦"
+            : $"[动画体检] ✓ 两条大腿交替（最大夹角差 {maxPhaseGap:F1}°）");
+
+        // ── 脚底有没有贴地（游戏里只做了 ×1.75 缩放，没做落地修正）──────
+        if (visual is not null)
+        {
+            Aabb box = SubtreeAabb(visual);
+            GD.Print($"[动画体检] 模型包围盒（世界坐标）：minY {box.Position.Y:F3} / maxY {(box.Position.Y + box.Size.Y):F3}");
+            GD.Print($"[动画体检] 玩家原点 Y = {player.GlobalPosition.Y:F3}，胶囊半径 0.35 / 高 1.75"
+                     + "（胶囊底面约在原点 Y - 0.775）");
+
+            float feetY = box.Position.Y;
+            float capsuleBottom = player.GlobalPosition.Y - 0.775f;
+
+            GD.Print(Mathf.Abs(feetY - capsuleBottom) < 0.15f
+                ? $"[动画体检] ✓ 脚底与胶囊底面基本对齐（差 {feetY - capsuleBottom:F3}m）"
+                : $"[动画体检] ✗ 脚底与胶囊底面**差了 {feetY - capsuleBottom:F3}m**"
+                  + "—— 模型要么悬空要么陷进地里，**这就是'移动看起来不对'的一半**");
+        }
+
         GetTree().Quit(0);
+    }
+
+    /// <summary>把子树里所有 MeshInstance3D 的包围盒并起来（量"脚底在哪"用）。</summary>
+    private static Aabb SubtreeAabb(Node3D root)
+    {
+        bool any = false;
+        Vector3 min = new(float.MaxValue, float.MaxValue, float.MaxValue);
+        Vector3 max = new(float.MinValue, float.MinValue, float.MinValue);
+
+        void Walk(Node node, Transform3D xform)
+        {
+            Transform3D local = xform * (node is Node3D n3 ? n3.Transform : Transform3D.Identity);
+
+            if (node is MeshInstance3D mesh)
+            {
+                Aabb box = mesh.GetAabb();
+                for (int i = 0; i < 8; i++)
+                {
+                    Vector3 world = local * box.GetEndpoint(i);
+                    min = min.Min(world);
+                    max = max.Max(world);
+                }
+
+                any = true;
+            }
+
+            foreach (Node child in node.GetChildren())
+                Walk(child, local);
+        }
+
+        Walk(root, Transform3D.Identity);
+        return any ? new Aabb(min, max - min) : default;
     }
 
     private static Skeleton3D? FindSkeleton(Node node)
