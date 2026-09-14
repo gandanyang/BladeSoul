@@ -6,7 +6,7 @@
 script = ExtResource("1_difficulty")
 Id = "samurai"
 DisplayName = "武士"
-DeflectWindowFrames = 9
+DeflectWindowFrames = 15
 GuardCancelLockFrames = 4
 GuardReentryLockFrames = 8
 IssenWindowFrames = 6

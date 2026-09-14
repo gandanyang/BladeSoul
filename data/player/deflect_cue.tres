@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="DeflectCueProfile" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/Player/DeflectCueProfile.cs" id="1_cue"]
+
+[resource]
+script = ExtResource("1_cue")
+Radius = 0.62
+Thickness = 0.045
+HeightOffset = 0.03
+OpenColor = Color(0.55, 0.85, 1, 0.75)
+EmissionColor = Color(0.35, 0.7, 1, 1)
+EmissionEnergy = 1.6

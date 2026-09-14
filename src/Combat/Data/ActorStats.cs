@@ -17,6 +17,18 @@ public partial class ActorStats : Resource
     [Export] public float PostureRegenPerSecond { get; set; } = 22f;
     [Export] public int PostureRegenDelayFrames { get; set; } = 30;
 
+    /// <summary>
+    /// 体干被打满之后的**破韧窗口**帧数（T52）。
+    ///
+    /// 这段时间里敌人不能主动攻击、只能挨打，并且可以被处决（交互键 F/E）；
+    /// 窗口过期就恢复行动。它放在这里而不是塞进 `DifficultyProfile`：
+    /// 破韧时长是**敌人自己的属性**（杂兵 2 秒、精英该更短、BOSS 可能不给），
+    /// 不是难度旋钮——四档难度下同一个足兵的破韧窗口应当是同一个长度。
+    ///
+    /// 默认 120 帧 = 2.0 秒（项目主人裁定）。
+    /// </summary>
+    [Export] public int PostureBrokenFrames { get; set; } = 120;
+
     [ExportGroup("移动")]
     [Export] public float MoveSpeed { get; set; } = 4.2f;
     [Export] public float SprintSpeed { get; set; } = 7.0f;
@@ -27,6 +39,16 @@ public partial class ActorStats : Resource
     /// 默认 1.0 = 不变；只有会格挡的角色（玩家）在 data/actors/ 里调小它。
     /// </summary>
     [Export] public float GuardMoveScale { get; set; } = 1.0f;
+
+    /// <summary>
+    /// 格挡时**整体下沉**多少米（T52 试玩："按住右键格挡的姿势也有问题"）。
+    ///
+    /// 为什么需要它、而不是继续用腿部角度：本骨架髋部固定、只有大腿/小腿/脚三节，
+    /// 实测"旋腿"只会把**膝盖抬起来**（大腿 1.50 rad → 膝抬高 22cm），
+    /// 做不出下蹲。所以"压重心"必须靠根骨骼下沉，腿只做轻微弯曲配合。
+    /// 0 = 不下沉（默认，给不会格挡的角色）。
+    /// </summary>
+    [Export] public float GuardCrouchDepth { get; set; } = 0f;
 
     [Export] public float TurnSpeed { get; set; } = 12f;
 

@@ -1,0 +1,16 @@
+; T33 灯笼专用材质（**全作唯一的暖色**，10 §3.1）。
+;
+; 为什么是 Unshaded：灯纸是**透光**的。给一个不透明的壳做普通着色，
+; 挂在锚点上的那盏 OmniLight 照亮的全是壳的**内表面**——从外面看反而更黑。
+; Unshaded 直接把顶点色当最终颜色输出，纸就是暖的、竹骨就是深的，
+; 一盏自亮的灯在雨夜里正是它该有的样子。**真正的照明仍由 T34 的 OmniLight 提供**
+; （它照的是周围的地面与墙），本材质只负责"这盏灯自己看起来是亮的"。
+;
+; ★ 所以它**只给灯笼的发光件**用：柱子/石基是结构件，走 kit_surface。
+[gd_resource type="StandardMaterial3D" load_steps=1 format=3]
+
+[resource]
+vertex_color_use_as_albedo = true
+albedo_color = Color(1, 1, 1, 1)
+shading_mode = 0
+metallic = 0.0

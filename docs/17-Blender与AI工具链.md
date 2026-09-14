@@ -52,6 +52,53 @@ C:\Users\Gdy\Blender\blender-4.5.13-windows-x64\blender.exe `
 |---|---|
 | `tools/blender_find_weapon.py` | 把模型按**连通块**拆开，按"细长比"排序找出长条物件（T48 用） |
 | `tools/blender_render_views.py` | 出**正交三视图** PNG（用眼睛定位几何，比数字快） |
+| `tools/rig_character.py` | 无头绑定：建骨架 → 权重（**带权重总量校验 + envelope 回退**）→ 导出后**直接解析 glb 的 JSON chunk 自检 `skins`** |
+| `tools/uv_protagonist.py` | **按部位**展开主角 UV ＋ 出「分区配色图」（见 §2.5） |
+| `tools/slice_material_sheet.py` | 把 AI 出的 3×2 材质表**按检测到的分隔缝**切开 ＋ 真无缝化（见 §2.6） |
+| `tools/apply_materials.py` | 把贴图按 `docs/09 §7` 分槽贴到模型上（盒子投影 UV）＋ 导出后**解析 glb 自检材质** ＋ 出正/背面预览（见 §2.6） |
+
+### 2.6 贴图落地：盒子投影，不用那张展开图
+
+`uv_protagonist.py` 出的 UV **带自相交**，直接拿来贴图会糊。但我们的贴图本来就是**无缝平铺**的，
+所以 `apply_materials.py` 用**盒子投影**现做 UV：每个面按主法线轴投到对应平面，
+坐标除以 `TILE`（当前 0.42 米）平铺。不用切缝、不会自相交、颗粒方向天然跟着表面走。
+
+材质槽按 `docs/09 §7` 分成 `Body` / `Hair` / `ClothInner` / `ClothOuter` / `Leather` /
+`Metal` / `Gauntlet` / `Belt` —— 侵蚀三阶段靠换材质，不靠重建模型。
+
+三条踩出来的坑：
+
+| 坑 | 现象 | 对策 |
+|---|---|---|
+| **按分隔缝中点切材质表** | 每格第 0 / 510 列亮度 0.98（近白），贴上去一圈白边。肉眼看不出，是量"每列平均亮度最亮列"才发现的 | 切点用「上一条缝末尾 +1」到「下一条缝开头 −1」，**整条缝排除**；并断言四边亮度 < 0.85 |
+| **无贴图的材质忘了设视口颜色** | 预览里脸和头发**纯白**，看着像导出失败 | `mat.diffuse_color` 和 Principled 的 `Base Color` **两个都要设**（Workbench 用的是前者） |
+| **按高度分带走手臂** | 右小臂被吃成布料；笼手盖满整条左臂（09 §5 只到手背包→小臂中段） | 笼手边界**读骨骼权重**（`L_Hand` + `L_Forearm`），手臂靠 `ARM_Z` + 横向偏离比例判定，不用猜 |
+| **忘了模型正面不是 -Z** | 游戏里角色**背朝前跑**。模型在 Blender 里正面朝 -Y，经 glTF 的 Y-up 转换后正面朝 **+Z**，而 Godot 角色的前方是 -Z | 在 `Player.tscn` 里设 `VisualModelRotationDegrees = Vector3(0, 180, 0)`。**验证方法**（别靠推理）：用 `ModelShowcase` 渲染 yaw=0 与 yaw=180 两张对照图——前者看到正面、后者看到背面，就证明正面朝 +Z |
+| **★ 模型原点在身体中部，不在脚底** | `PlayerActor` 只设 Scale/Rotation、**不补偿原点**，于是角色**腰以下全埋进地板**（实测脚底 y=-0.869、头顶 y=+0.876）。dsh 曾以为「scale 0.888 已经处理了」——**缩放救不了原点偏移**，这是两件事 | 别动 `PlayerActor.cs`（冻结），也别重导 glb（会冲掉别人的权重修复）。用包装场景 [`scenes/actors/PlayerVisual.tscn`](../scenes/actors/PlayerVisual.tscn)：包装层原点=脚底，里面把 glb 实例抬 +0.979（=模型空间的脚底深度）。`FindSkeleton` 是递归的，多一层不影响动画器。**验证**：`scenes/tests/PlayerMountShot.tscn` 会打出「脚底 y / 头顶 y」，必须 ≈0 / ≈1.75 |
+| **展示场景会替你补偿原点，游戏不会** | `ModelShowcase` 里有 `root.Position += (0, -box.Position.Y*scale, 0)` 主动把模型贴到脚底，所以**它在哪儿都好看**；同样的模型在游戏里却是埋的。只看展示图会漏掉这个 bug | 量「游戏挂载方式」必须用不复刻补偿的场景（`PlayerMountShot` 就是为此写的），并打印脚底/头顶的**世界 y** 数字，别只看图 |
+| **`check_dead_config.ps1` 把「有引用」误判成「零引用」** | 只在**声明行以中文结尾**的字段上发生（实测 `EnemyPostureColor` / `PostureColor`）。rg 输出是 UTF-8，PS 5.1 按 ANSI 解码，行尾中文的末字节把**换行一起吃掉**，下一行（真正的那条引用）被并进来 | 脚本开头设 `[Console]::OutputEncoding = [Text.Encoding]::UTF8`；判据改用 `-replace '^.*?:\d+:', ''` 剥前缀，不再用 `-split ':'`（盘符冒号会让结果随 CWD 变）。修完 **24 → 22，与基线一致** |
+
+### 2.5 UV 展开：**必须按部位分开做**
+
+`uv_protagonist.py` 里有一条踩出来的结论，别再走回头路：
+
+| 做法 | 结果 |
+|---|---|
+| `smart_project` 一把梭（66°） | 覆盖率 **43.8%**，且同一部位被打散成上千个小岛铺满全图 → 分区图像**碎片海**，人和 AI 都认不出「哪块是左小臂」 |
+| `smart_project` 放宽到 89° | 覆盖率 54.8%，**仍然是碎片海**（根因不是参数，是智能展开只按法线夹角切） |
+| ★ **按部位分组 `unwrap` ＋ 最后整体 `pack_islands`** | 覆盖率 **84.7%**，9 个部位 = 9 块大连通岛，分区图一眼可读 |
+
+分组展开顺带满足 `docs/09 §6/§7` 的硬要求：**笼手与左臂必须单独一套 UV**（侵蚀三阶段靠换材质）。
+
+```powershell
+& 'C:\Users\Gdy\Blender\blender-4.5.13-windows-x64\blender.exe' --background --factory-startup --python tools\uv_protagonist.py
+```
+
+产出：`uv_congyun_regionmap.png`（2048，给 AI 的参考图）/ `uv_congyun_layout.png`（带岛边界）/
+`model_player_congyun_03_uv.glb`（带 UV 的副本，**不覆盖** `_rigged`，T48 的在制品不受影响）。
+
+> ⚠️ **这张 UV 还带自相交**：按部位 `unwrap` 不做分缝，压平后同一部位会自己叠起来。
+> 当**参考图**够用，当**最终贴图布局**不够用——要落地贴图前得先给每个部位手工切缝。
 
 **共同模式**：读一个写死的路径 → 干活 → **把结论打成 `[标签] ...` 的行** → 由调用方 `Select-String` 抓。
 （因为 Blender 会把大量噪声打到 stdout，不打标签就没法筛。）
@@ -84,7 +131,21 @@ C:\Users\Gdy\Blender\blender-4.5.13-windows-x64\blender.exe `
 > ⚠️ **它需要 Blender GUI 开着**，并且 addon 处于监听状态。
 > 也就是说：**它不能在没有界面的自动化里用**——这正是它不能当 agent 主力的原因。
 
-### 3.1 安装（三步，本机还没做）
+### 3.1 安装（**2026-09-13 已完成**，下面是实际用的路径）
+
+> 本节原写"本机还没做"，现已装好，记录实际结果以便复现：
+> - `blender-mcp 1.9.1`：`uv tool install blender-mcp` → `C:\Users\Gdy\.local\bin\blender-mcp.exe`
+> - Blender 插件：把包里的 `bundled/addon.py` 复制成
+>   `%APPDATA%\Blender Foundation\Blender\4.5\scripts\addons\blender_mcp_addon.py`，
+>   并用无头方式启用 + `save_userpref()`（**只复制不启用是不会加载的**）
+> - 已接入三个客户端：ZCode（`~/.zcode/cli/config.json` → 嵌套 `mcp.servers`）、
+>   Trae CN（`%APPDATA%\Trae CN\User\settings.json` → `mcpServers`，**该文件带 UTF-8 BOM**）、
+>   WorkBuddy（工作区级 `.workbuddy/mcp.json`；置信度中等，未实测）
+> - **人还要做一步**：Blender 里按 `N` → BlenderMCP 面板 → `Connect`。
+>   那是跑在 Blender 事件循环里的 socket 服务，无头模式起不来。
+>   顺序：**先让 Blender 连上，再让客户端连**。
+>
+> 不熟悉 Blender 的人从 [18-Blender零基础第一步](18-Blender零基础第一步.md) 开始看。
 
 #### ✅ 已经装好了（2026-09-13）
 

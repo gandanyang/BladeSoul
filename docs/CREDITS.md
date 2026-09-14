@@ -21,6 +21,8 @@
 | 资产 | 来源 | 授权 | 用途 | 状态 |
 |---|---|---|---|---|
 | `assets/models/model_player_congyun_01.glb` | **AI 生成**：TapTap Maker `create_3d_asset`（Tripo 后端）文本→四视图审核→模型→自动绑骨；asset `e933654bd1064c068d7ce28709d9586b`，2026-09-12 | AI 生成内容，本项目自有，可自由使用 | 主角「丛云」静态模型（几何 + 法线 + UV0 + 内嵌贴图），依赖 03 §2.5 造型设定 | **静态版，无骨架**；绑骨/重定向待 Blender → Mixamo |
+| `assets/models/model_player_congyun_02.glb` | **本地 AI 生成**：ComfyUI ＋ Hunyuan3D 2.1（`hunyuan_3d_v2.1.safetensors`），2026-09-13，输入图 `ref_protagonist_congyun_v2_a_front.png` | AI 生成内容，本项目自有 | 主角「丛云」**按新方向（中国剑客×西幻剑客）重做的几何基线**：415,894 面 → 去渣 83,180 块 → 降面 **11,500 面 / 287 KB**，包围盒 0.95×1.95×0.46（人形），法线已由 `cleanup_mesh.py` 补上 | ⚠️ **只有几何**：`POSITION+NORMAL`，**无骨架 / 无 UV / 无贴图**（旧 01 是带 `JOINTS_0+WEIGHTS_0+TEXCOORD_0` 的绑骨模型）。**尚未接入游戏**——接线要等 Blender 重拓扑＋绑定 ＋ Mixamo 骨架 ＋ T27 贴图 |
+
 
 > 该 GLB 由 Maker 产出的 UrhoX `.mdl`（UMD2）经自写导出器转换而来
 > （临时脚本 `%TEMP%\opencode\mdl2glb.py`，复用了 TapMaker `mdl-voxelize` 技能的只读解析器）。
@@ -48,6 +50,12 @@
 
 | `assets/references/ref_heroine_aya_v2_a…f.png`（6 张） | **本地 AI 生成**：ComfyUI ＋ Z-Image Turbo，2026-09-13 | AI 生成内容，本项目自有 | 「绫」的**各方位参考图 v2（3D 管线用）**：深灰背景 ＋ 无行囊。正面与背面已实测能生成正常模型 |
 
+| `assets/references/ref_protagonist_congyun_v2_a_front.png` / `_b_back.png` / `_c_face.png`（3 张） | **AI 生成**：GPT-image（制作人操作），2026-09-13 | AI 生成内容，本项目自有 | 主角「丛云」的**外观定案参考图**（正面全身 / 背面全身 / 面部特写）。对应 **2026-09-13 的方向修正**：主角从"日本浪人剑客"改为**中国剑客 × 西幻剑客**（见 [09](09-主角外观设定.md) 抬头）。**这 3 张是当前唯一有效的主角外观参考**；`model_player_congyun_01.glb` 是方向修正前的旧模型 |
+
+> 主角 v2 的提示词记在 `ref_protagonist_congyun_v2.prompt.txt`。
+> **⚠️ 这 3 张与规格之间还有 5 条未消除的偏差**（薄片结构 / 笼手材质 / 袍长 / 肤色 / 剑出画），
+> 逐条记在该文件的"实测偏差"里——**送给 3D 管线前先看那一节**。
+
 > 提示词与全部生成参数记在同目录的 `ref_enemy_ashigaru_01.prompt.txt`——
 > **可复现**（固定 seed ＋ 清单文件），换台机器跑同样参数能得到同样的图。
 > v2 的参数记在 `ref_enemy_ashigaru_v2.prompt.txt`（含六张各自的变量与规格对照表）。
@@ -55,6 +63,18 @@
 > 「绫」的各方位图参数记在 `ref_heroine_aya_v1.prompt.txt`（含六个 seed 与**四条已知偏差**：
 > 脚底接触阴影未完全去除 / 风格偏手绘感 3D / 年龄感偏小 / 行囊偏大）。
 > v2 的参数与**对照实验记录**记在 `ref_heroine_aya_v2.jobs.txt`（v1 为什么废、两次对照组的数据）。
+
+| `assets/references/uv_congyun_regionmap.png` / `uv_congyun_layout.png`（2 张，2048²） | **本地工具生成**：`tools/uv_protagonist.py`（headless Blender 4.5.13），2026-09-13 | 本项目自有 | 丛云模型的 **UV 分区配色图**：9 个部位各一块纯色（配色直接取 [09](09-主角外观设定.md) §3 配色板）。**用途：作为 GPT-image 生成「无缝材质表」时的参考图**，告诉模型哪块面积对应哪个部位。`_layout` 是叠了岛边界的版本 |
+
+| `assets/models/model_player_congyun_03_uv.glb` | 本地工具生成：`tools/uv_protagonist.py`，2026-09-13 | 本项目自有 | `_03_rigged.glb` 的 **UV 副本**：按部位分组 `unwrap` ＋ 整体 `pack_islands`，覆盖率 84.7%，9 块连通岛。**不覆盖 `_rigged`**（T48 的在制品不受影响）。⚠️ 该 UV **带自相交**（分组展开未切缝），当参考图够用、当最终贴图布局不够用 |
+
+| `assets/references/tex_prompt_congyun.md` | 本项目自有（制作人操作 GPT-image） | — | 主角「无缝材质表」的提示词，六格锁定 [09](09-主角外观设定.md) §3 配色板。**贴在 17 §2.5 的 UV 流程之后**：UV 分区图当参考图 → 出 6 张无缝材质 → 按 `Body/Cloth/Leather/Metal/Gauntlet/Eye` 分槽回填 |
+
+| `assets/references/tex_sheet_congyun_v1.png` | **AI 生成**：GPT-image（制作人操作，用上面那条提示词），2026-09-14，1254² | AI 生成内容，本项目自有 | 主角「无缝材质表」原图：3 列 × 2 行（411×621 竖长条格 ＋ 白分隔缝）。六格顺序 cloth_in / cloth_out / leather / metal / gauntlet / belt。**一次通过**——无红色、无金色、笼手正是 09 §5 要的「湿的会生长的甲壳 ＋ 沟槽紫光」 |
+
+| `assets/textures/congyun/tex_{cloth_in,cloth_out,leather,metal,gauntlet,belt}.png`（6 张，512²） | 本地工具生成：`tools/slice_material_sheet.py`，2026-09-14，源图 = 上面那张 | 本项目自有 | 从上表**按检测到的分隔缝精确切**（不是按百分比裁）＋ **真无缝化**后的成品贴图。对照组：接缝比 皮革横向 **48.4→1.20**、金属 **26.8→0.94**；边缘亮度 0.21~0.54（阈值 0.85，防白缝残留） |
+
+| `assets/models/model_player_congyun_03_textured.glb` | 本地工具生成：`tools/apply_materials.py`，2026-09-14，3.4 MB | 本项目自有 | **当前主角外观的最终形态，`Player.tscn` 用的就是它**：输入是 T48 切完剑的 `_03_rigged_weapon.glb`（含 `Weapon_R` / `Scabbard` 两根附加骨）＋ **9 个材质槽**（`Body`/`Hair`/`Scabbard` 纯色，`ClothInner`/`ClothOuter`/`Leather`/`Metal`/`Gauntlet`/`Belt` 贴图）。盒子投影现做 UV（不用那张带自相交的展开图）。**导出后自检通过**：`skins=1`、带 skin 节点=1、9 个材质全部带贴图或颜色、图片全部内嵌（`bufferView`，不是外部 URI） |
 
 ## 字体 / 音频库
 

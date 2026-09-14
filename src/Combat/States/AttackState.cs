@@ -1,5 +1,6 @@
 using System;
 using Godot;
+using Oniblade.Audio;
 using Oniblade.Combat.Data;
 
 namespace Oniblade.Combat.States;
@@ -62,6 +63,7 @@ public sealed class AttackState : ActorState
 
         AttackData current = _attacks[_sequence.StepIndex];
         Actor.PrimaryHitbox?.SetActive(_sequence.IsActive);
+        PlayWhooshAt(current, _sequence.Frame);
 
         // 步进：只在"前摇 + 判定"期间推进，后摇站住不动；
         // 速度**前快后慢**（权重 1.6 → 0.4，均值 1.0，总位移仍等于 AdvanceDistance）。
@@ -103,5 +105,37 @@ public sealed class AttackState : ActorState
         Actor.PrimaryHitbox?.SetActive(false);
         Actor.SetCurrentAttack(data.Id);
         Actor.OnAttackStarted(data);
+    }
+
+    /// <summary>
+    /// 挥刀音：在**判定开始那一帧**响，不是在按下按键那一帧。
+    ///
+    /// 为什么必须是判定帧：刀风跟的是**刀的运动**，不是玩家的意图。
+    /// 按下去就响的话，前摇 8 帧（约 0.13 秒）里声音已经过去了，等刀真的扫到人时
+    /// 反而没有声音接上——听起来就是"声音和动作对不上"，比没有声音更糟。
+    ///
+    /// 每段只响一次：用帧号精确命中 <c>ActiveStart</c>，而不是"在判定期内每帧都响"。
+    /// </summary>
+    private void PlayWhooshAt(AttackData data, int frame)
+    {
+        if (data.Whoosh == WhooshKind.None)
+            return;
+
+        if (frame != data.ActiveStart)
+            return;
+
+        AudioDirector? audio = AudioDirector.Instance;
+        if (audio is null)
+            return;
+
+        CombatSfx sfx = data.Whoosh == WhooshKind.Heavy
+            ? CombatSfx.WhooshHeavy
+            : CombatSfx.WhooshLight;
+
+        audio.PlayCombatAt(
+            sfx,
+            Actor.GlobalPosition,
+            data.WhooshPitchScale,
+            data.WhooshVolumeDb);
     }
 }

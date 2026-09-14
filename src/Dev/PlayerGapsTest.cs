@@ -45,6 +45,23 @@ public partial class PlayerGapsTest : Node3D
     /// <summary>每个动作采样多少帧（取逐帧与 idle 的最大差，避免"采错时机"）。</summary>
     [Export] public int PoseFrames { get; set; } = 40;
 
+    /// <summary>
+    /// 每个动作与 idle 的**最小**允许骨角差。低于它就说明这个动作没有专属动画
+    /// （或者幅度小到在背后视角下读不出来）。
+    ///
+    /// ★ **为什么不是 0.1°**：卡片的原话是"≤0.1° 就是没有专属动画"，那是**探测**用的判据；
+    /// 但断言不能定在 0.1°——差 0.2° 的"动作"照样等于没有。这里取 **25°**：
+    /// 它是"轮廓一眼能看出不同"的下限，而现有动作（走 72° / 格挡 98° / 普攻 134°）
+    /// 都远在它之上，所以这条阈值不会把已经做好的东西误判成坏的。
+    /// </summary>
+    [Export] public float MinActionAngle { get; set; } = 25f;
+
+    /// <summary>idle 与它自己必须几乎没差——否则"基准"本身在动，后面所有比较都失效。</summary>
+    [Export] public float MaxIdleDrift { get; set; } = 5f;
+
+    /// <summary>采样下来的姿势（按动作名索引），用来做"两个姿势必须一眼可分"的成对断言。</summary>
+    private readonly Dictionary<string, float[]> _poses = new();
+
     /// <summary>把玩家挪出去多远（平台是 24×16，Z 方向最远 8，所以 40 一定在外面）。</summary>
     [Export] public float TeleportAwayZ { get; set; } = 40f;
 
@@ -187,7 +204,7 @@ public partial class PlayerGapsTest : Node3D
 
         GD.Print("");
         GD.Print(_failures == 0
-            ? "[缺口] ✓ 掉落保护全部通过"
+            ? "[缺口] ✓ 掉落保护 + 动画覆盖 全部通过"
             : $"[缺口] ✗ {_failures} 条没过（见上面）");
         GD.Print("[缺口] 体检完成");
         GetTree().Quit(_failures == 0 ? 0 : 1);
@@ -227,16 +244,24 @@ public partial class PlayerGapsTest : Node3D
     // ── 动画覆盖 ────────────────────────────────────────────────────────
 
     /// <summary>
-    /// 逐个动作驱动 `HumanoidAnimator`，采样骨架姿势，报告与 idle 的**最大骨角差**。
-    /// 差 0° 就说明这个动作**没有专属动画**——它和站着不动一模一样。
+    /// 逐个动作驱动 `HumanoidAnimator`，采样骨架姿势，把"缺少专属动画"变成**硬断言**。
+    ///
+    /// 这张表原来是**纯报告**（打印数字、退出码恒 0），于是"动画缺不缺"只存在于日志里，
+    /// `check.ps1` 全绿并不能说明动画是齐的——T38 卡点名要把这一步接成断言，就是这个意思。
+    ///
+    /// 三类断言：
+    /// ① idle 基准稳定（否则后面全部失效）；
+    /// ② 每个动作与 idle 的差 ≥ <see cref="MinActionAngle"/>；
+    /// ③ 三组"必须一眼可分"的姿势，两两之差 ≥ 同一个阈值。
     /// </summary>
     private void ProbeAnimationCoverage()
     {
-        GD.Print("[缺口] 动画覆盖体检：每个动作与 idle 的最大骨角差（0° = 没有专属动画）");
+        GD.Print("[缺口] 动画覆盖体检：每个动作与 idle 的最大骨角差（差得越少 = 越没有专属姿态）");
 
         if (!ResourceLoader.Exists(ModelPath))
         {
             GD.PrintErr($"[缺口]   找不到模型：{ModelPath}");
+            _failures++;
             return;
         }
 
@@ -247,10 +272,12 @@ public partial class PlayerGapsTest : Node3D
         if (skeleton is null)
         {
             GD.PrintErr("[缺口]   模型里没有 Skeleton3D——动画体检做不了");
+            _failures++;
             return;
         }
 
         float[] idle = SamplePose(skeleton, new HumanoidAnimator(template), ActionKind.Idle, null);
+        _poses[nameof(ActionKind.Idle)] = idle;
         GD.Print($"[缺口]   （骨架 {skeleton.GetBoneCount()} 根骨，每个动作采样 {PoseFrames} 帧取最大差）");
 
         var kinds = new (ActionKind Kind, string Name)[]
@@ -258,6 +285,8 @@ public partial class PlayerGapsTest : Node3D
             (ActionKind.Idle, "idle（基准）"),
             (ActionKind.Walk, "走 / 跑"),
             (ActionKind.Guard, "格挡（按住）"),
+            (ActionKind.Deflect, "弹开成功"),
+            (ActionKind.GuardBreak, "体干破裂"),
             (ActionKind.Attack, "普攻（三连共用）"),
             (ActionKind.Issen, "一闪"),
             (ActionKind.Hit, "受击"),
@@ -270,13 +299,41 @@ public partial class PlayerGapsTest : Node3D
         foreach ((ActionKind kind, string name) in kinds)
         {
             float[] pose = SamplePose(skeleton, new HumanoidAnimator(template), kind, idle);
+            _poses[kind.ToString()] = pose;
+
             float diff = MaxBoneAngleDegrees(idle, pose);
-            string verdict = diff < 0.5f ? "**没有专属动画**" : "有";
-            GD.Print($"[缺口]   {name,-16} 与 idle 最大差 {diff,6:F1}°　{verdict}");
+            if (kind == ActionKind.Idle)
+            {
+                Assert(diff <= MaxIdleDrift, $"idle 基准稳定（自身漂移 {diff:F1}°）",
+                    $"基准自己就在动（{diff:F1}°）——后面所有比较都不可信");
+                continue;
+            }
+
+            Assert(diff >= MinActionAngle, $"{name}：与 idle 差 {diff:F1}°，有专属姿态",
+                $"只差 {diff:F1}°，低于 {MinActionAngle:F0}° —— 等于没有专属动画");
         }
+
+        // 成对可分性。T38 卡验收第 4 条点名的就是这条：
+        // 「格挡 / 弹开 / 体干破裂」必须**一眼能分辨**；死亡与受击也要分得清，
+        // 否则"死了"在玩家眼里只是"抖了一下"。
+        AssertPairDistinct("格挡", ActionKind.Guard, "弹开成功", ActionKind.Deflect);
+        AssertPairDistinct("格挡", ActionKind.Guard, "体干破裂", ActionKind.GuardBreak);
+        AssertPairDistinct("死亡", ActionKind.Death, "受击", ActionKind.Hit);
     }
 
-    private enum ActionKind { Idle, Walk, Guard, Attack, Issen, Hit, Dodge, Heal, Jump, Death }
+    /// <summary>两个姿势之间的最大骨角差必须够大——"一眼可分"要能被量出来，不能靠嘴说。</summary>
+    private void AssertPairDistinct(string nameA, ActionKind a, string nameB, ActionKind b)
+    {
+        if (!_poses.TryGetValue(a.ToString(), out float[]? poseA) ||
+            !_poses.TryGetValue(b.ToString(), out float[]? poseB))
+            return;
+
+        float diff = MaxBoneAngleDegrees(poseA, poseB);
+        Assert(diff >= MinActionAngle, $"{nameA} 与 {nameB} 可区分（差 {diff:F1}°）",
+            $"两者只差 {diff:F1}°，玩家一眼分不出来");
+    }
+
+    private enum ActionKind { Idle, Walk, Guard, Deflect, GuardBreak, Attack, Issen, Hit, Dodge, Heal, Jump, Death }
 
     /// <summary>
     /// 把一个动作跑 <see cref="PoseFrames"/> 帧，返回**与 <paramref name="idleRef"/> 差得最远的那一帧**的姿势。
@@ -309,9 +366,27 @@ public partial class PlayerGapsTest : Node3D
                 case ActionKind.Hit:
                     if (f == 0) animator.PlayHitReact(2f, 18);
                     break;
-                default:
-                    // 闪避 / 喝血 / 跳跃 / 死亡：**animator 上根本没有对应接口**，
-                    // 所以什么都不驱动——这正是我们要测出来的缺口。
+                case ActionKind.Deflect:
+                    if (f == 0) animator.PlayDeflect(16);
+                    break;
+                case ActionKind.GuardBreak:
+                    if (f == 0) animator.PlayGuardBreak(24);
+                    break;
+                case ActionKind.Dodge:
+                    // 右闪。侧向的轮廓与前后向不一样，而侧闪是实战里按得最多的一个。
+                    if (f == 0) animator.PlayDodge(Vector3.Right, 26);
+                    break;
+                case ActionKind.Heal:
+                    if (f == 0) animator.PlayHeal(18, 24, 12);   // 起手 / 饮用 / 收招（Dev 用固定帧数）
+                    break;
+                case ActionKind.Jump:
+                    // 跳跃是**逐帧轮询**的（滞空多少帧是物理结果，数据里没有这个数），
+                    // 所以这里按帧推进三段：前 1/3 蹬地、中 1/3 腾空、后 1/3 落地。
+                    int third = Mathf.Max(1, PoseFrames / 3);
+                    animator.TrackJump(f < third ? 0 : (f < third * 2 ? 1 : 2), 12);
+                    break;
+                case ActionKind.Death:
+                    if (f == 0) animator.PlayDeath(40);
                     break;
             }
 

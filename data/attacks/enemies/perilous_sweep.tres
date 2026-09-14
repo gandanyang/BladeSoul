@@ -21,3 +21,6 @@ IssenVulnerable = true
 Perilous = true
 PerilousKind = 2
 AnimName = "perilous_sweep"
+Whoosh = 2
+WhooshVolumeDb = -2.0
+WhooshPitchScale = 0.88

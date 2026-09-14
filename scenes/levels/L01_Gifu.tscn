@@ -1,4 +1,11 @@
-[gd_scene load_steps=14 format=3]
+[gd_scene load_steps=21 format=3]
+[ext_resource type="PackedScene" path="res://assets/models/kit/floor_wetstone.glb" id="kit_1"]
+[ext_resource type="PackedScene" path="res://assets/models/kit/lantern_post.glb" id="kit_2"]
+[ext_resource type="PackedScene" path="res://assets/models/kit/lantern_standing.glb" id="kit_3"]
+[ext_resource type="PackedScene" path="res://assets/models/kit/wall_ishigaki.glb" id="kit_4"]
+[ext_resource type="PackedScene" path="res://assets/models/kit/wall_plank.glb" id="kit_5"]
+[ext_resource type="Material" path="res://data/materials/kit_surface.tres" id="kit_6"]
+[ext_resource type="Material" path="res://data/materials/kit_lantern.tres" id="kit_7"]
 
 [ext_resource type="Script" path="res://src/World/QualityDirector.cs" id="8_quality"]
 [ext_resource type="Script" path="res://src/World/AtmosphereController.cs" id="9_atmo"]
@@ -373,3 +380,1077 @@ script = ExtResource("2_reset")
 
 [node name="Player" parent="." instance=ExtResource("3_player")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5, 0.1, 0)
+
+
+
+; ---- T33 KIT DRESSING (由 tools/gen_level_kit.py 生成，不要手改这一段) ----
+[node name="Dressing" type="Node3D" parent="."]
+
+[node name="Kit_Shell_Ground_0" parent="Dressing" instance=ExtResource("kit_1")]
+position = Vector3(-4.00545, -0.2, -16.0048)
+scale = Vector3(1.00014, 1.03, 1.0003)
+
+[node name="world" index="0" parent="Dressing/Kit_Shell_Ground_0"]
+
+[node name="kit_floor_wetstone" index="0" parent="Dressing/Kit_Shell_Ground_0/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Shell_Ground_1_1" parent="Dressing" instance=ExtResource("kit_1")]
+position = Vector3(-4.00545, -0.2, -8.0024)
+scale = Vector3(1.00014, 1.03, 1.0003)
+
+[node name="world" index="0" parent="Dressing/Kit_Shell_Ground_1_1"]
+
+[node name="kit_floor_wetstone" index="0" parent="Dressing/Kit_Shell_Ground_1_1/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Shell_Ground_2_2" parent="Dressing" instance=ExtResource("kit_1")]
+position = Vector3(-4.00545, -0.2, 0)
+scale = Vector3(1.00014, 1.03, 1.0003)
+
+[node name="world" index="0" parent="Dressing/Kit_Shell_Ground_2_2"]
+
+[node name="kit_floor_wetstone" index="0" parent="Dressing/Kit_Shell_Ground_2_2/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Shell_Ground_3_3" parent="Dressing" instance=ExtResource("kit_1")]
+position = Vector3(-4.00545, -0.2, 8.0024)
+scale = Vector3(1.00014, 1.03, 1.0003)
+
+[node name="world" index="0" parent="Dressing/Kit_Shell_Ground_3_3"]
+
+[node name="kit_floor_wetstone" index="0" parent="Dressing/Kit_Shell_Ground_3_3/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Shell_Ground_4_4" parent="Dressing" instance=ExtResource("kit_1")]
+position = Vector3(-4.00545, -0.2, 16.0048)
+scale = Vector3(1.00014, 1.03, 1.0003)
+
+[node name="world" index="0" parent="Dressing/Kit_Shell_Ground_4_4"]
+
+[node name="kit_floor_wetstone" index="0" parent="Dressing/Kit_Shell_Ground_4_4/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Shell_Ground_5_5" parent="Dressing" instance=ExtResource("kit_1")]
+position = Vector3(3.99564, -0.2, -16.0048)
+scale = Vector3(1.00014, 1.03, 1.0003)
+
+[node name="world" index="0" parent="Dressing/Kit_Shell_Ground_5_5"]
+
+[node name="kit_floor_wetstone" index="0" parent="Dressing/Kit_Shell_Ground_5_5/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Shell_Ground_6_6" parent="Dressing" instance=ExtResource("kit_1")]
+position = Vector3(3.99564, -0.2, -8.0024)
+scale = Vector3(1.00014, 1.03, 1.0003)
+
+[node name="world" index="0" parent="Dressing/Kit_Shell_Ground_6_6"]
+
+[node name="kit_floor_wetstone" index="0" parent="Dressing/Kit_Shell_Ground_6_6/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Shell_Ground_7_7" parent="Dressing" instance=ExtResource("kit_1")]
+position = Vector3(3.99564, -0.2, 0)
+scale = Vector3(1.00014, 1.03, 1.0003)
+
+[node name="world" index="0" parent="Dressing/Kit_Shell_Ground_7_7"]
+
+[node name="kit_floor_wetstone" index="0" parent="Dressing/Kit_Shell_Ground_7_7/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Shell_Ground_8_8" parent="Dressing" instance=ExtResource("kit_1")]
+position = Vector3(3.99564, -0.2, 8.0024)
+scale = Vector3(1.00014, 1.03, 1.0003)
+
+[node name="world" index="0" parent="Dressing/Kit_Shell_Ground_8_8"]
+
+[node name="kit_floor_wetstone" index="0" parent="Dressing/Kit_Shell_Ground_8_8/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Shell_Ground_9_9" parent="Dressing" instance=ExtResource("kit_1")]
+position = Vector3(3.99564, -0.2, 16.0048)
+scale = Vector3(1.00014, 1.03, 1.0003)
+
+[node name="world" index="0" parent="Dressing/Kit_Shell_Ground_9_9"]
+
+[node name="kit_floor_wetstone" index="0" parent="Dressing/Kit_Shell_Ground_9_9/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Shell_Ground_10_10" parent="Dressing" instance=ExtResource("kit_1")]
+position = Vector3(11.99673, -0.2, -16.0048)
+scale = Vector3(1.00014, 1.03, 1.0003)
+
+[node name="world" index="0" parent="Dressing/Kit_Shell_Ground_10_10"]
+
+[node name="kit_floor_wetstone" index="0" parent="Dressing/Kit_Shell_Ground_10_10/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Shell_Ground_11_11" parent="Dressing" instance=ExtResource("kit_1")]
+position = Vector3(11.99673, -0.2, -8.0024)
+scale = Vector3(1.00014, 1.03, 1.0003)
+
+[node name="world" index="0" parent="Dressing/Kit_Shell_Ground_11_11"]
+
+[node name="kit_floor_wetstone" index="0" parent="Dressing/Kit_Shell_Ground_11_11/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Shell_Ground_12_12" parent="Dressing" instance=ExtResource("kit_1")]
+position = Vector3(11.99673, -0.2, 0)
+scale = Vector3(1.00014, 1.03, 1.0003)
+
+[node name="world" index="0" parent="Dressing/Kit_Shell_Ground_12_12"]
+
+[node name="kit_floor_wetstone" index="0" parent="Dressing/Kit_Shell_Ground_12_12/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Shell_Ground_13_13" parent="Dressing" instance=ExtResource("kit_1")]
+position = Vector3(11.99673, -0.2, 8.0024)
+scale = Vector3(1.00014, 1.03, 1.0003)
+
+[node name="world" index="0" parent="Dressing/Kit_Shell_Ground_13_13"]
+
+[node name="kit_floor_wetstone" index="0" parent="Dressing/Kit_Shell_Ground_13_13/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Shell_Ground_14_14" parent="Dressing" instance=ExtResource("kit_1")]
+position = Vector3(11.99673, -0.2, 16.0048)
+scale = Vector3(1.00014, 1.03, 1.0003)
+
+[node name="world" index="0" parent="Dressing/Kit_Shell_Ground_14_14"]
+
+[node name="kit_floor_wetstone" index="0" parent="Dressing/Kit_Shell_Ground_14_14/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Shell_Ground_15_15" parent="Dressing" instance=ExtResource("kit_1")]
+position = Vector3(19.99782, -0.2, -16.0048)
+scale = Vector3(1.00014, 1.03, 1.0003)
+
+[node name="world" index="0" parent="Dressing/Kit_Shell_Ground_15_15"]
+
+[node name="kit_floor_wetstone" index="0" parent="Dressing/Kit_Shell_Ground_15_15/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Shell_Ground_16_16" parent="Dressing" instance=ExtResource("kit_1")]
+position = Vector3(19.99782, -0.2, -8.0024)
+scale = Vector3(1.00014, 1.03, 1.0003)
+
+[node name="world" index="0" parent="Dressing/Kit_Shell_Ground_16_16"]
+
+[node name="kit_floor_wetstone" index="0" parent="Dressing/Kit_Shell_Ground_16_16/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Shell_Ground_17_17" parent="Dressing" instance=ExtResource("kit_1")]
+position = Vector3(19.99782, -0.2, 0)
+scale = Vector3(1.00014, 1.03, 1.0003)
+
+[node name="world" index="0" parent="Dressing/Kit_Shell_Ground_17_17"]
+
+[node name="kit_floor_wetstone" index="0" parent="Dressing/Kit_Shell_Ground_17_17/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Shell_Ground_18_18" parent="Dressing" instance=ExtResource("kit_1")]
+position = Vector3(19.99782, -0.2, 8.0024)
+scale = Vector3(1.00014, 1.03, 1.0003)
+
+[node name="world" index="0" parent="Dressing/Kit_Shell_Ground_18_18"]
+
+[node name="kit_floor_wetstone" index="0" parent="Dressing/Kit_Shell_Ground_18_18/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Shell_Ground_19_19" parent="Dressing" instance=ExtResource("kit_1")]
+position = Vector3(19.99782, -0.2, 16.0048)
+scale = Vector3(1.00014, 1.03, 1.0003)
+
+[node name="world" index="0" parent="Dressing/Kit_Shell_Ground_19_19"]
+
+[node name="kit_floor_wetstone" index="0" parent="Dressing/Kit_Shell_Ground_19_19/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Shell_Ground_20_20" parent="Dressing" instance=ExtResource("kit_1")]
+position = Vector3(27.99891, -0.2, -16.0048)
+scale = Vector3(1.00014, 1.03, 1.0003)
+
+[node name="world" index="0" parent="Dressing/Kit_Shell_Ground_20_20"]
+
+[node name="kit_floor_wetstone" index="0" parent="Dressing/Kit_Shell_Ground_20_20/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Shell_Ground_21_21" parent="Dressing" instance=ExtResource("kit_1")]
+position = Vector3(27.99891, -0.2, -8.0024)
+scale = Vector3(1.00014, 1.03, 1.0003)
+
+[node name="world" index="0" parent="Dressing/Kit_Shell_Ground_21_21"]
+
+[node name="kit_floor_wetstone" index="0" parent="Dressing/Kit_Shell_Ground_21_21/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Shell_Ground_22_22" parent="Dressing" instance=ExtResource("kit_1")]
+position = Vector3(27.99891, -0.2, 0)
+scale = Vector3(1.00014, 1.03, 1.0003)
+
+[node name="world" index="0" parent="Dressing/Kit_Shell_Ground_22_22"]
+
+[node name="kit_floor_wetstone" index="0" parent="Dressing/Kit_Shell_Ground_22_22/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Shell_Ground_23_23" parent="Dressing" instance=ExtResource("kit_1")]
+position = Vector3(27.99891, -0.2, 8.0024)
+scale = Vector3(1.00014, 1.03, 1.0003)
+
+[node name="world" index="0" parent="Dressing/Kit_Shell_Ground_23_23"]
+
+[node name="kit_floor_wetstone" index="0" parent="Dressing/Kit_Shell_Ground_23_23/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Shell_Ground_24_24" parent="Dressing" instance=ExtResource("kit_1")]
+position = Vector3(27.99891, -0.2, 16.0048)
+scale = Vector3(1.00014, 1.03, 1.0003)
+
+[node name="world" index="0" parent="Dressing/Kit_Shell_Ground_24_24"]
+
+[node name="kit_floor_wetstone" index="0" parent="Dressing/Kit_Shell_Ground_24_24/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Shell_Ground_25_25" parent="Dressing" instance=ExtResource("kit_1")]
+position = Vector3(36, -0.2, -16.0048)
+scale = Vector3(1.00014, 1.03, 1.0003)
+
+[node name="world" index="0" parent="Dressing/Kit_Shell_Ground_25_25"]
+
+[node name="kit_floor_wetstone" index="0" parent="Dressing/Kit_Shell_Ground_25_25/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Shell_Ground_26_26" parent="Dressing" instance=ExtResource("kit_1")]
+position = Vector3(36, -0.2, -8.0024)
+scale = Vector3(1.00014, 1.03, 1.0003)
+
+[node name="world" index="0" parent="Dressing/Kit_Shell_Ground_26_26"]
+
+[node name="kit_floor_wetstone" index="0" parent="Dressing/Kit_Shell_Ground_26_26/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Shell_Ground_27_27" parent="Dressing" instance=ExtResource("kit_1")]
+position = Vector3(36, -0.2, 0)
+scale = Vector3(1.00014, 1.03, 1.0003)
+
+[node name="world" index="0" parent="Dressing/Kit_Shell_Ground_27_27"]
+
+[node name="kit_floor_wetstone" index="0" parent="Dressing/Kit_Shell_Ground_27_27/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Shell_Ground_28_28" parent="Dressing" instance=ExtResource("kit_1")]
+position = Vector3(36, -0.2, 8.0024)
+scale = Vector3(1.00014, 1.03, 1.0003)
+
+[node name="world" index="0" parent="Dressing/Kit_Shell_Ground_28_28"]
+
+[node name="kit_floor_wetstone" index="0" parent="Dressing/Kit_Shell_Ground_28_28/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Shell_Ground_29_29" parent="Dressing" instance=ExtResource("kit_1")]
+position = Vector3(36, -0.2, 16.0048)
+scale = Vector3(1.00014, 1.03, 1.0003)
+
+[node name="world" index="0" parent="Dressing/Kit_Shell_Ground_29_29"]
+
+[node name="kit_floor_wetstone" index="0" parent="Dressing/Kit_Shell_Ground_29_29/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Shell_Ground_30_30" parent="Dressing" instance=ExtResource("kit_1")]
+position = Vector3(44.00109, -0.2, -16.0048)
+scale = Vector3(1.00014, 1.03, 1.0003)
+
+[node name="world" index="0" parent="Dressing/Kit_Shell_Ground_30_30"]
+
+[node name="kit_floor_wetstone" index="0" parent="Dressing/Kit_Shell_Ground_30_30/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Shell_Ground_31_31" parent="Dressing" instance=ExtResource("kit_1")]
+position = Vector3(44.00109, -0.2, -8.0024)
+scale = Vector3(1.00014, 1.03, 1.0003)
+
+[node name="world" index="0" parent="Dressing/Kit_Shell_Ground_31_31"]
+
+[node name="kit_floor_wetstone" index="0" parent="Dressing/Kit_Shell_Ground_31_31/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Shell_Ground_32_32" parent="Dressing" instance=ExtResource("kit_1")]
+position = Vector3(44.00109, -0.2, 0)
+scale = Vector3(1.00014, 1.03, 1.0003)
+
+[node name="world" index="0" parent="Dressing/Kit_Shell_Ground_32_32"]
+
+[node name="kit_floor_wetstone" index="0" parent="Dressing/Kit_Shell_Ground_32_32/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Shell_Ground_33_33" parent="Dressing" instance=ExtResource("kit_1")]
+position = Vector3(44.00109, -0.2, 8.0024)
+scale = Vector3(1.00014, 1.03, 1.0003)
+
+[node name="world" index="0" parent="Dressing/Kit_Shell_Ground_33_33"]
+
+[node name="kit_floor_wetstone" index="0" parent="Dressing/Kit_Shell_Ground_33_33/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Shell_Ground_34_34" parent="Dressing" instance=ExtResource("kit_1")]
+position = Vector3(44.00109, -0.2, 16.0048)
+scale = Vector3(1.00014, 1.03, 1.0003)
+
+[node name="world" index="0" parent="Dressing/Kit_Shell_Ground_34_34"]
+
+[node name="kit_floor_wetstone" index="0" parent="Dressing/Kit_Shell_Ground_34_34/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Shell_Ground_35_35" parent="Dressing" instance=ExtResource("kit_1")]
+position = Vector3(52.00218, -0.2, -16.0048)
+scale = Vector3(1.00014, 1.03, 1.0003)
+
+[node name="world" index="0" parent="Dressing/Kit_Shell_Ground_35_35"]
+
+[node name="kit_floor_wetstone" index="0" parent="Dressing/Kit_Shell_Ground_35_35/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Shell_Ground_36_36" parent="Dressing" instance=ExtResource("kit_1")]
+position = Vector3(52.00218, -0.2, -8.0024)
+scale = Vector3(1.00014, 1.03, 1.0003)
+
+[node name="world" index="0" parent="Dressing/Kit_Shell_Ground_36_36"]
+
+[node name="kit_floor_wetstone" index="0" parent="Dressing/Kit_Shell_Ground_36_36/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Shell_Ground_37_37" parent="Dressing" instance=ExtResource("kit_1")]
+position = Vector3(52.00218, -0.2, 0)
+scale = Vector3(1.00014, 1.03, 1.0003)
+
+[node name="world" index="0" parent="Dressing/Kit_Shell_Ground_37_37"]
+
+[node name="kit_floor_wetstone" index="0" parent="Dressing/Kit_Shell_Ground_37_37/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Shell_Ground_38_38" parent="Dressing" instance=ExtResource("kit_1")]
+position = Vector3(52.00218, -0.2, 8.0024)
+scale = Vector3(1.00014, 1.03, 1.0003)
+
+[node name="world" index="0" parent="Dressing/Kit_Shell_Ground_38_38"]
+
+[node name="kit_floor_wetstone" index="0" parent="Dressing/Kit_Shell_Ground_38_38/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Shell_Ground_39_39" parent="Dressing" instance=ExtResource("kit_1")]
+position = Vector3(52.00218, -0.2, 16.0048)
+scale = Vector3(1.00014, 1.03, 1.0003)
+
+[node name="world" index="0" parent="Dressing/Kit_Shell_Ground_39_39"]
+
+[node name="kit_floor_wetstone" index="0" parent="Dressing/Kit_Shell_Ground_39_39/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Shell_Ground_40_40" parent="Dressing" instance=ExtResource("kit_1")]
+position = Vector3(60.00327, -0.2, -16.0048)
+scale = Vector3(1.00014, 1.03, 1.0003)
+
+[node name="world" index="0" parent="Dressing/Kit_Shell_Ground_40_40"]
+
+[node name="kit_floor_wetstone" index="0" parent="Dressing/Kit_Shell_Ground_40_40/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Shell_Ground_41_41" parent="Dressing" instance=ExtResource("kit_1")]
+position = Vector3(60.00327, -0.2, -8.0024)
+scale = Vector3(1.00014, 1.03, 1.0003)
+
+[node name="world" index="0" parent="Dressing/Kit_Shell_Ground_41_41"]
+
+[node name="kit_floor_wetstone" index="0" parent="Dressing/Kit_Shell_Ground_41_41/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Shell_Ground_42_42" parent="Dressing" instance=ExtResource("kit_1")]
+position = Vector3(60.00327, -0.2, 0)
+scale = Vector3(1.00014, 1.03, 1.0003)
+
+[node name="world" index="0" parent="Dressing/Kit_Shell_Ground_42_42"]
+
+[node name="kit_floor_wetstone" index="0" parent="Dressing/Kit_Shell_Ground_42_42/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Shell_Ground_43_43" parent="Dressing" instance=ExtResource("kit_1")]
+position = Vector3(60.00327, -0.2, 8.0024)
+scale = Vector3(1.00014, 1.03, 1.0003)
+
+[node name="world" index="0" parent="Dressing/Kit_Shell_Ground_43_43"]
+
+[node name="kit_floor_wetstone" index="0" parent="Dressing/Kit_Shell_Ground_43_43/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Shell_Ground_44_44" parent="Dressing" instance=ExtResource("kit_1")]
+position = Vector3(60.00327, -0.2, 16.0048)
+scale = Vector3(1.00014, 1.03, 1.0003)
+
+[node name="world" index="0" parent="Dressing/Kit_Shell_Ground_44_44"]
+
+[node name="kit_floor_wetstone" index="0" parent="Dressing/Kit_Shell_Ground_44_44/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Shell_Ground_45_45" parent="Dressing" instance=ExtResource("kit_1")]
+position = Vector3(68.00436, -0.2, -16.0048)
+scale = Vector3(1.00014, 1.03, 1.0003)
+
+[node name="world" index="0" parent="Dressing/Kit_Shell_Ground_45_45"]
+
+[node name="kit_floor_wetstone" index="0" parent="Dressing/Kit_Shell_Ground_45_45/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Shell_Ground_46_46" parent="Dressing" instance=ExtResource("kit_1")]
+position = Vector3(68.00436, -0.2, -8.0024)
+scale = Vector3(1.00014, 1.03, 1.0003)
+
+[node name="world" index="0" parent="Dressing/Kit_Shell_Ground_46_46"]
+
+[node name="kit_floor_wetstone" index="0" parent="Dressing/Kit_Shell_Ground_46_46/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Shell_Ground_47_47" parent="Dressing" instance=ExtResource("kit_1")]
+position = Vector3(68.00436, -0.2, 0)
+scale = Vector3(1.00014, 1.03, 1.0003)
+
+[node name="world" index="0" parent="Dressing/Kit_Shell_Ground_47_47"]
+
+[node name="kit_floor_wetstone" index="0" parent="Dressing/Kit_Shell_Ground_47_47/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Shell_Ground_48_48" parent="Dressing" instance=ExtResource("kit_1")]
+position = Vector3(68.00436, -0.2, 8.0024)
+scale = Vector3(1.00014, 1.03, 1.0003)
+
+[node name="world" index="0" parent="Dressing/Kit_Shell_Ground_48_48"]
+
+[node name="kit_floor_wetstone" index="0" parent="Dressing/Kit_Shell_Ground_48_48/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Shell_Ground_49_49" parent="Dressing" instance=ExtResource("kit_1")]
+position = Vector3(68.00436, -0.2, 16.0048)
+scale = Vector3(1.00014, 1.03, 1.0003)
+
+[node name="world" index="0" parent="Dressing/Kit_Shell_Ground_49_49"]
+
+[node name="kit_floor_wetstone" index="0" parent="Dressing/Kit_Shell_Ground_49_49/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Shell_Ground_50_50" parent="Dressing" instance=ExtResource("kit_1")]
+position = Vector3(76.00545, -0.2, -16.0048)
+scale = Vector3(1.00014, 1.03, 1.0003)
+
+[node name="world" index="0" parent="Dressing/Kit_Shell_Ground_50_50"]
+
+[node name="kit_floor_wetstone" index="0" parent="Dressing/Kit_Shell_Ground_50_50/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Shell_Ground_51_51" parent="Dressing" instance=ExtResource("kit_1")]
+position = Vector3(76.00545, -0.2, -8.0024)
+scale = Vector3(1.00014, 1.03, 1.0003)
+
+[node name="world" index="0" parent="Dressing/Kit_Shell_Ground_51_51"]
+
+[node name="kit_floor_wetstone" index="0" parent="Dressing/Kit_Shell_Ground_51_51/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Shell_Ground_52_52" parent="Dressing" instance=ExtResource("kit_1")]
+position = Vector3(76.00545, -0.2, 0)
+scale = Vector3(1.00014, 1.03, 1.0003)
+
+[node name="world" index="0" parent="Dressing/Kit_Shell_Ground_52_52"]
+
+[node name="kit_floor_wetstone" index="0" parent="Dressing/Kit_Shell_Ground_52_52/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Shell_Ground_53_53" parent="Dressing" instance=ExtResource("kit_1")]
+position = Vector3(76.00545, -0.2, 8.0024)
+scale = Vector3(1.00014, 1.03, 1.0003)
+
+[node name="world" index="0" parent="Dressing/Kit_Shell_Ground_53_53"]
+
+[node name="kit_floor_wetstone" index="0" parent="Dressing/Kit_Shell_Ground_53_53/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Shell_Ground_54_54" parent="Dressing" instance=ExtResource("kit_1")]
+position = Vector3(76.00545, -0.2, 16.0048)
+scale = Vector3(1.00014, 1.03, 1.0003)
+
+[node name="world" index="0" parent="Dressing/Kit_Shell_Ground_54_54"]
+
+[node name="kit_floor_wetstone" index="0" parent="Dressing/Kit_Shell_Ground_54_54/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Entrance_BackWall_0" parent="Dressing" instance=ExtResource("kit_5")]
+position = Vector3(-0.2, 1.6, -2.253)
+rotation = Vector3(0, 1.5708, 0)
+scale = Vector3(1.1265, 1.00375, 1.03)
+
+[node name="world" index="0" parent="Dressing/Kit_Entrance_BackWall_0"]
+
+[node name="kit_wall_plank" index="0" parent="Dressing/Kit_Entrance_BackWall_0/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Entrance_BackWall_1_1" parent="Dressing" instance=ExtResource("kit_5")]
+position = Vector3(-0.2, 1.6, 2.253)
+rotation = Vector3(0, 1.5708, 0)
+scale = Vector3(1.1265, 1.00375, 1.03)
+
+[node name="world" index="0" parent="Dressing/Kit_Entrance_BackWall_1_1"]
+
+[node name="kit_wall_plank" index="0" parent="Dressing/Kit_Entrance_BackWall_1_1/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Entrance_SideWallLeft_0" parent="Dressing" instance=ExtResource("kit_5")]
+position = Vector3(-2.353, 1.6, -4.2)
+scale = Vector3(1.1765, 1.00375, 1.03)
+
+[node name="world" index="0" parent="Dressing/Kit_Entrance_SideWallLeft_0"]
+
+[node name="kit_wall_plank" index="0" parent="Dressing/Kit_Entrance_SideWallLeft_0/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Entrance_SideWallLeft_1_1" parent="Dressing" instance=ExtResource("kit_5")]
+position = Vector3(2.353, 1.6, -4.2)
+scale = Vector3(1.1765, 1.00375, 1.03)
+
+[node name="world" index="0" parent="Dressing/Kit_Entrance_SideWallLeft_1_1"]
+
+[node name="kit_wall_plank" index="0" parent="Dressing/Kit_Entrance_SideWallLeft_1_1/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Entrance_SideWallRight_0" parent="Dressing" instance=ExtResource("kit_5")]
+position = Vector3(-2.353, 1.6, 4.2)
+scale = Vector3(1.1765, 1.00375, 1.03)
+
+[node name="world" index="0" parent="Dressing/Kit_Entrance_SideWallRight_0"]
+
+[node name="kit_wall_plank" index="0" parent="Dressing/Kit_Entrance_SideWallRight_0/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Entrance_SideWallRight_1_1" parent="Dressing" instance=ExtResource("kit_5")]
+position = Vector3(2.353, 1.6, 4.2)
+scale = Vector3(1.1765, 1.00375, 1.03)
+
+[node name="world" index="0" parent="Dressing/Kit_Entrance_SideWallRight_1_1"]
+
+[node name="kit_wall_plank" index="0" parent="Dressing/Kit_Entrance_SideWallRight_1_1/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_StreetA_WallLeft1_0" parent="Dressing" instance=ExtResource("kit_5")]
+position = Vector3(6, 1.6, -2.2)
+scale = Vector3(1.003, 1.00375, 1.03)
+
+[node name="world" index="0" parent="Dressing/Kit_StreetA_WallLeft1_0"]
+
+[node name="kit_wall_plank" index="0" parent="Dressing/Kit_StreetA_WallLeft1_0/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_StreetA_WallRight1_0" parent="Dressing" instance=ExtResource("kit_5")]
+position = Vector3(6, 1.6, 2.2)
+scale = Vector3(1.003, 1.00375, 1.03)
+
+[node name="world" index="0" parent="Dressing/Kit_StreetA_WallRight1_0"]
+
+[node name="kit_wall_plank" index="0" parent="Dressing/Kit_StreetA_WallRight1_0/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_StreetA_WallLeft2_0" parent="Dressing" instance=ExtResource("kit_5")]
+position = Vector3(10, 1.6, -2.2)
+scale = Vector3(1.003, 1.00375, 1.03)
+
+[node name="world" index="0" parent="Dressing/Kit_StreetA_WallLeft2_0"]
+
+[node name="kit_wall_plank" index="0" parent="Dressing/Kit_StreetA_WallLeft2_0/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_StreetA_WallRight2_0" parent="Dressing" instance=ExtResource("kit_5")]
+position = Vector3(10, 1.6, 2.2)
+scale = Vector3(1.003, 1.00375, 1.03)
+
+[node name="world" index="0" parent="Dressing/Kit_StreetA_WallRight2_0"]
+
+[node name="kit_wall_plank" index="0" parent="Dressing/Kit_StreetA_WallRight2_0/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_CombatA_Wall1_0" parent="Dressing" instance=ExtResource("kit_5")]
+position = Vector3(14.747, 1.6, 4.2)
+scale = Vector3(1.1265, 1.00375, 1.03)
+
+[node name="world" index="0" parent="Dressing/Kit_CombatA_Wall1_0"]
+
+[node name="kit_wall_plank" index="0" parent="Dressing/Kit_CombatA_Wall1_0/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_CombatA_Wall1_1_1" parent="Dressing" instance=ExtResource("kit_5")]
+position = Vector3(19.253, 1.6, 4.2)
+scale = Vector3(1.1265, 1.00375, 1.03)
+
+[node name="world" index="0" parent="Dressing/Kit_CombatA_Wall1_1_1"]
+
+[node name="kit_wall_plank" index="0" parent="Dressing/Kit_CombatA_Wall1_1_1/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_CombatA_Wall2_0" parent="Dressing" instance=ExtResource("kit_5")]
+position = Vector3(14.747, 1.6, -4.2)
+scale = Vector3(1.1265, 1.00375, 1.03)
+
+[node name="world" index="0" parent="Dressing/Kit_CombatA_Wall2_0"]
+
+[node name="kit_wall_plank" index="0" parent="Dressing/Kit_CombatA_Wall2_0/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_CombatA_Wall2_1_1" parent="Dressing" instance=ExtResource("kit_5")]
+position = Vector3(19.253, 1.6, -4.2)
+scale = Vector3(1.1265, 1.00375, 1.03)
+
+[node name="world" index="0" parent="Dressing/Kit_CombatA_Wall2_1_1"]
+
+[node name="kit_wall_plank" index="0" parent="Dressing/Kit_CombatA_Wall2_1_1/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_StreetB_WallLeft1_0" parent="Dressing" instance=ExtResource("kit_5")]
+position = Vector3(24, 1.6, -2.2)
+scale = Vector3(1.003, 1.00375, 1.03)
+
+[node name="world" index="0" parent="Dressing/Kit_StreetB_WallLeft1_0"]
+
+[node name="kit_wall_plank" index="0" parent="Dressing/Kit_StreetB_WallLeft1_0/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_StreetB_WallRight1_0" parent="Dressing" instance=ExtResource("kit_5")]
+position = Vector3(24, 1.6, 2.2)
+scale = Vector3(1.003, 1.00375, 1.03)
+
+[node name="world" index="0" parent="Dressing/Kit_StreetB_WallRight1_0"]
+
+[node name="kit_wall_plank" index="0" parent="Dressing/Kit_StreetB_WallRight1_0/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_StreetB_WallLeft2_0" parent="Dressing" instance=ExtResource("kit_5")]
+position = Vector3(28, 1.6, -2.2)
+scale = Vector3(1.003, 1.00375, 1.03)
+
+[node name="world" index="0" parent="Dressing/Kit_StreetB_WallLeft2_0"]
+
+[node name="kit_wall_plank" index="0" parent="Dressing/Kit_StreetB_WallLeft2_0/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_StreetB_WallRight2_0" parent="Dressing" instance=ExtResource("kit_5")]
+position = Vector3(28, 1.6, 2.2)
+scale = Vector3(1.003, 1.00375, 1.03)
+
+[node name="world" index="0" parent="Dressing/Kit_StreetB_WallRight2_0"]
+
+[node name="kit_wall_plank" index="0" parent="Dressing/Kit_StreetB_WallRight2_0/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_StreetB_WallLeft3_0" parent="Dressing" instance=ExtResource("kit_5")]
+position = Vector3(32, 1.6, -2.2)
+scale = Vector3(1.003, 1.00375, 1.03)
+
+[node name="world" index="0" parent="Dressing/Kit_StreetB_WallLeft3_0"]
+
+[node name="kit_wall_plank" index="0" parent="Dressing/Kit_StreetB_WallLeft3_0/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_StreetB_WallRight3_0" parent="Dressing" instance=ExtResource("kit_5")]
+position = Vector3(32, 1.6, 2.2)
+scale = Vector3(1.003, 1.00375, 1.03)
+
+[node name="world" index="0" parent="Dressing/Kit_StreetB_WallRight3_0"]
+
+[node name="kit_wall_plank" index="0" parent="Dressing/Kit_StreetB_WallRight3_0/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_CombatB_WallLeft_0" parent="Dressing" instance=ExtResource("kit_5")]
+position = Vector3(36, 1.6, -6.2)
+scale = Vector3(1.003, 1.00375, 1.03)
+
+[node name="world" index="0" parent="Dressing/Kit_CombatB_WallLeft_0"]
+
+[node name="kit_wall_plank" index="0" parent="Dressing/Kit_CombatB_WallLeft_0/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_CombatB_WallRight_0" parent="Dressing" instance=ExtResource("kit_5")]
+position = Vector3(36, 1.6, 6.2)
+scale = Vector3(1.003, 1.00375, 1.03)
+
+[node name="world" index="0" parent="Dressing/Kit_CombatB_WallRight_0"]
+
+[node name="kit_wall_plank" index="0" parent="Dressing/Kit_CombatB_WallRight_0/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_CombatB_WallFarNorth_0" parent="Dressing" instance=ExtResource("kit_5")]
+position = Vector3(40, 1.6, -3.85)
+rotation = Vector3(0, 1.5708, 0)
+scale = Vector3(1.328, 1.00375, 1.03)
+
+[node name="world" index="0" parent="Dressing/Kit_CombatB_WallFarNorth_0"]
+
+[node name="kit_wall_plank" index="0" parent="Dressing/Kit_CombatB_WallFarNorth_0/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_CombatB_WallFarSouth_0" parent="Dressing" instance=ExtResource("kit_5")]
+position = Vector3(40, 1.6, 3.85)
+rotation = Vector3(0, 1.5708, 0)
+scale = Vector3(1.328, 1.00375, 1.03)
+
+[node name="world" index="0" parent="Dressing/Kit_CombatB_WallFarSouth_0"]
+
+[node name="kit_wall_plank" index="0" parent="Dressing/Kit_CombatB_WallFarSouth_0/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Alley_AlleyWallNorth_0" parent="Dressing" instance=ExtResource("kit_5")]
+position = Vector3(25.9955, 1.6, -10.2)
+scale = Vector3(1.00075, 1.00375, 1.03)
+
+[node name="world" index="0" parent="Dressing/Kit_Alley_AlleyWallNorth_0"]
+
+[node name="kit_wall_plank" index="0" parent="Dressing/Kit_Alley_AlleyWallNorth_0/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Alley_AlleyWallNorth_1_1" parent="Dressing" instance=ExtResource("kit_5")]
+position = Vector3(29.9985, 1.6, -10.2)
+scale = Vector3(1.00075, 1.00375, 1.03)
+
+[node name="world" index="0" parent="Dressing/Kit_Alley_AlleyWallNorth_1_1"]
+
+[node name="kit_wall_plank" index="0" parent="Dressing/Kit_Alley_AlleyWallNorth_1_1/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Alley_AlleyWallNorth_2_2" parent="Dressing" instance=ExtResource("kit_5")]
+position = Vector3(34.0015, 1.6, -10.2)
+scale = Vector3(1.00075, 1.00375, 1.03)
+
+[node name="world" index="0" parent="Dressing/Kit_Alley_AlleyWallNorth_2_2"]
+
+[node name="kit_wall_plank" index="0" parent="Dressing/Kit_Alley_AlleyWallNorth_2_2/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Alley_AlleyWallNorth_3_3" parent="Dressing" instance=ExtResource("kit_5")]
+position = Vector3(38.0045, 1.6, -10.2)
+scale = Vector3(1.00075, 1.00375, 1.03)
+
+[node name="world" index="0" parent="Dressing/Kit_Alley_AlleyWallNorth_3_3"]
+
+[node name="kit_wall_plank" index="0" parent="Dressing/Kit_Alley_AlleyWallNorth_3_3/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Alley_AlleyWallSouth_0" parent="Dressing" instance=ExtResource("kit_5")]
+position = Vector3(25.9955, 1.6, -5.8)
+scale = Vector3(1.00075, 1.00375, 1.03)
+
+[node name="world" index="0" parent="Dressing/Kit_Alley_AlleyWallSouth_0"]
+
+[node name="kit_wall_plank" index="0" parent="Dressing/Kit_Alley_AlleyWallSouth_0/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Alley_AlleyWallSouth_1_1" parent="Dressing" instance=ExtResource("kit_5")]
+position = Vector3(29.9985, 1.6, -5.8)
+scale = Vector3(1.00075, 1.00375, 1.03)
+
+[node name="world" index="0" parent="Dressing/Kit_Alley_AlleyWallSouth_1_1"]
+
+[node name="kit_wall_plank" index="0" parent="Dressing/Kit_Alley_AlleyWallSouth_1_1/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Alley_AlleyWallSouth_2_2" parent="Dressing" instance=ExtResource("kit_5")]
+position = Vector3(34.0015, 1.6, -5.8)
+scale = Vector3(1.00075, 1.00375, 1.03)
+
+[node name="world" index="0" parent="Dressing/Kit_Alley_AlleyWallSouth_2_2"]
+
+[node name="kit_wall_plank" index="0" parent="Dressing/Kit_Alley_AlleyWallSouth_2_2/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Alley_AlleyWallSouth_3_3" parent="Dressing" instance=ExtResource("kit_5")]
+position = Vector3(38.0045, 1.6, -5.8)
+scale = Vector3(1.00075, 1.00375, 1.03)
+
+[node name="world" index="0" parent="Dressing/Kit_Alley_AlleyWallSouth_3_3"]
+
+[node name="kit_wall_plank" index="0" parent="Dressing/Kit_Alley_AlleyWallSouth_3_3/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_SavePoint_NookWallLeft_0" parent="Dressing" instance=ExtResource("kit_5")]
+position = Vector3(44, 1.6, -2.2)
+scale = Vector3(1.003, 1.00375, 1.03)
+
+[node name="world" index="0" parent="Dressing/Kit_SavePoint_NookWallLeft_0"]
+
+[node name="kit_wall_plank" index="0" parent="Dressing/Kit_SavePoint_NookWallLeft_0/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_SavePoint_NookWallRight_0" parent="Dressing" instance=ExtResource("kit_5")]
+position = Vector3(44, 1.6, 2.2)
+scale = Vector3(1.003, 1.00375, 1.03)
+
+[node name="world" index="0" parent="Dressing/Kit_SavePoint_NookWallRight_0"]
+
+[node name="kit_wall_plank" index="0" parent="Dressing/Kit_SavePoint_NookWallRight_0/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_StreetC_WallLeft1_0" parent="Dressing" instance=ExtResource("kit_5")]
+position = Vector3(50, 1.6, -2.2)
+scale = Vector3(1.003, 1.00375, 1.03)
+
+[node name="world" index="0" parent="Dressing/Kit_StreetC_WallLeft1_0"]
+
+[node name="kit_wall_plank" index="0" parent="Dressing/Kit_StreetC_WallLeft1_0/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_StreetC_WallRight1_0" parent="Dressing" instance=ExtResource("kit_5")]
+position = Vector3(50, 1.6, 2.2)
+scale = Vector3(1.003, 1.00375, 1.03)
+
+[node name="world" index="0" parent="Dressing/Kit_StreetC_WallRight1_0"]
+
+[node name="kit_wall_plank" index="0" parent="Dressing/Kit_StreetC_WallRight1_0/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_StreetC_WallLeft2_0" parent="Dressing" instance=ExtResource("kit_5")]
+position = Vector3(54, 1.6, -2.2)
+scale = Vector3(1.003, 1.00375, 1.03)
+
+[node name="world" index="0" parent="Dressing/Kit_StreetC_WallLeft2_0"]
+
+[node name="kit_wall_plank" index="0" parent="Dressing/Kit_StreetC_WallLeft2_0/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_StreetC_WallRight2_0" parent="Dressing" instance=ExtResource("kit_5")]
+position = Vector3(54, 1.6, 2.2)
+scale = Vector3(1.003, 1.00375, 1.03)
+
+[node name="world" index="0" parent="Dressing/Kit_StreetC_WallRight2_0"]
+
+[node name="kit_wall_plank" index="0" parent="Dressing/Kit_StreetC_WallRight2_0/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_BossRoom_Wall1_0" parent="Dressing" instance=ExtResource("kit_4")]
+position = Vector3(61.6205, 2, -8.2)
+scale = Vector3(1.06325, 1.25375, 1.03)
+
+[node name="world" index="0" parent="Dressing/Kit_BossRoom_Wall1_0"]
+
+[node name="kit_wall_ishigaki" index="0" parent="Dressing/Kit_BossRoom_Wall1_0/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_BossRoom_Wall1_1_1" parent="Dressing" instance=ExtResource("kit_4")]
+position = Vector3(65.8735, 2, -8.2)
+scale = Vector3(1.06325, 1.25375, 1.03)
+
+[node name="world" index="0" parent="Dressing/Kit_BossRoom_Wall1_1_1"]
+
+[node name="kit_wall_ishigaki" index="0" parent="Dressing/Kit_BossRoom_Wall1_1_1/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_BossRoom_Wall1_2_2" parent="Dressing" instance=ExtResource("kit_4")]
+position = Vector3(70.1265, 2, -8.2)
+scale = Vector3(1.06325, 1.25375, 1.03)
+
+[node name="world" index="0" parent="Dressing/Kit_BossRoom_Wall1_2_2"]
+
+[node name="kit_wall_ishigaki" index="0" parent="Dressing/Kit_BossRoom_Wall1_2_2/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_BossRoom_Wall1_3_3" parent="Dressing" instance=ExtResource("kit_4")]
+position = Vector3(74.3795, 2, -8.2)
+scale = Vector3(1.06325, 1.25375, 1.03)
+
+[node name="world" index="0" parent="Dressing/Kit_BossRoom_Wall1_3_3"]
+
+[node name="kit_wall_ishigaki" index="0" parent="Dressing/Kit_BossRoom_Wall1_3_3/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_BossRoom_Wall2_0" parent="Dressing" instance=ExtResource("kit_4")]
+position = Vector3(61.6205, 2, 8.2)
+scale = Vector3(1.06325, 1.25375, 1.03)
+
+[node name="world" index="0" parent="Dressing/Kit_BossRoom_Wall2_0"]
+
+[node name="kit_wall_ishigaki" index="0" parent="Dressing/Kit_BossRoom_Wall2_0/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_BossRoom_Wall2_1_1" parent="Dressing" instance=ExtResource("kit_4")]
+position = Vector3(65.8735, 2, 8.2)
+scale = Vector3(1.06325, 1.25375, 1.03)
+
+[node name="world" index="0" parent="Dressing/Kit_BossRoom_Wall2_1_1"]
+
+[node name="kit_wall_ishigaki" index="0" parent="Dressing/Kit_BossRoom_Wall2_1_1/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_BossRoom_Wall2_2_2" parent="Dressing" instance=ExtResource("kit_4")]
+position = Vector3(70.1265, 2, 8.2)
+scale = Vector3(1.06325, 1.25375, 1.03)
+
+[node name="world" index="0" parent="Dressing/Kit_BossRoom_Wall2_2_2"]
+
+[node name="kit_wall_ishigaki" index="0" parent="Dressing/Kit_BossRoom_Wall2_2_2/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_BossRoom_Wall2_3_3" parent="Dressing" instance=ExtResource("kit_4")]
+position = Vector3(74.3795, 2, 8.2)
+scale = Vector3(1.06325, 1.25375, 1.03)
+
+[node name="world" index="0" parent="Dressing/Kit_BossRoom_Wall2_3_3"]
+
+[node name="kit_wall_ishigaki" index="0" parent="Dressing/Kit_BossRoom_Wall2_3_3/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_BossRoom_Wall3_0" parent="Dressing" instance=ExtResource("kit_4")]
+position = Vector3(76.2, 2, -6.3795)
+rotation = Vector3(0, 1.5708, 0)
+scale = Vector3(1.06325, 1.25375, 1.03)
+
+[node name="world" index="0" parent="Dressing/Kit_BossRoom_Wall3_0"]
+
+[node name="kit_wall_ishigaki" index="0" parent="Dressing/Kit_BossRoom_Wall3_0/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_BossRoom_Wall3_1_1" parent="Dressing" instance=ExtResource("kit_4")]
+position = Vector3(76.2, 2, -2.1265)
+rotation = Vector3(0, 1.5708, 0)
+scale = Vector3(1.06325, 1.25375, 1.03)
+
+[node name="world" index="0" parent="Dressing/Kit_BossRoom_Wall3_1_1"]
+
+[node name="kit_wall_ishigaki" index="0" parent="Dressing/Kit_BossRoom_Wall3_1_1/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_BossRoom_Wall3_2_2" parent="Dressing" instance=ExtResource("kit_4")]
+position = Vector3(76.2, 2, 2.1265)
+rotation = Vector3(0, 1.5708, 0)
+scale = Vector3(1.06325, 1.25375, 1.03)
+
+[node name="world" index="0" parent="Dressing/Kit_BossRoom_Wall3_2_2"]
+
+[node name="kit_wall_ishigaki" index="0" parent="Dressing/Kit_BossRoom_Wall3_2_2/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_BossRoom_Wall3_3_3" parent="Dressing" instance=ExtResource("kit_4")]
+position = Vector3(76.2, 2, 6.3795)
+rotation = Vector3(0, 1.5708, 0)
+scale = Vector3(1.06325, 1.25375, 1.03)
+
+[node name="world" index="0" parent="Dressing/Kit_BossRoom_Wall3_3_3"]
+
+[node name="kit_wall_ishigaki" index="0" parent="Dressing/Kit_BossRoom_Wall3_3_3/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_BossRoom_WallWestNorth_0" parent="Dressing" instance=ExtResource("kit_4")]
+position = Vector3(59.8, 2, -6.678)
+rotation = Vector3(0, 1.5708, 0)
+scale = Vector3(0.914, 1.25375, 1.03)
+
+[node name="world" index="0" parent="Dressing/Kit_BossRoom_WallWestNorth_0"]
+
+[node name="kit_wall_ishigaki" index="0" parent="Dressing/Kit_BossRoom_WallWestNorth_0/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_BossRoom_WallWestNorth_1_1" parent="Dressing" instance=ExtResource("kit_4")]
+position = Vector3(59.8, 2, -3.022)
+rotation = Vector3(0, 1.5708, 0)
+scale = Vector3(0.914, 1.25375, 1.03)
+
+[node name="world" index="0" parent="Dressing/Kit_BossRoom_WallWestNorth_1_1"]
+
+[node name="kit_wall_ishigaki" index="0" parent="Dressing/Kit_BossRoom_WallWestNorth_1_1/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_BossRoom_WallWestSouth_0" parent="Dressing" instance=ExtResource("kit_4")]
+position = Vector3(59.8, 2, 3.022)
+rotation = Vector3(0, 1.5708, 0)
+scale = Vector3(0.914, 1.25375, 1.03)
+
+[node name="world" index="0" parent="Dressing/Kit_BossRoom_WallWestSouth_0"]
+
+[node name="kit_wall_ishigaki" index="0" parent="Dressing/Kit_BossRoom_WallWestSouth_0/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_BossRoom_WallWestSouth_1_1" parent="Dressing" instance=ExtResource("kit_4")]
+position = Vector3(59.8, 2, 6.678)
+rotation = Vector3(0, 1.5708, 0)
+scale = Vector3(0.914, 1.25375, 1.03)
+
+[node name="world" index="0" parent="Dressing/Kit_BossRoom_WallWestSouth_1_1"]
+
+[node name="kit_wall_ishigaki" index="0" parent="Dressing/Kit_BossRoom_WallWestSouth_1_1/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Lanterns_Lantern1" parent="Dressing" instance=ExtResource("kit_3")]
+position = Vector3(13, 3, 1.8)
+scale = Vector3(1, 1, 1)
+
+[node name="world" index="0" parent="Dressing/Kit_Lanterns_Lantern1"]
+
+[node name="kit_lantern_standing" index="0" parent="Dressing/Kit_Lanterns_Lantern1/world"]
+material_override = ExtResource("kit_7")
+cast_shadow = 0
+
+[node name="Kit_Lanterns_Lantern1_Mount" parent="Dressing" instance=ExtResource("kit_2")]
+position = Vector3(13, 2.5975, 1.8)
+scale = Vector3(1, 1.29875, 1)
+
+[node name="world" index="0" parent="Dressing/Kit_Lanterns_Lantern1_Mount"]
+
+[node name="kit_lantern_post" index="0" parent="Dressing/Kit_Lanterns_Lantern1_Mount/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Lanterns_Lantern2" parent="Dressing" instance=ExtResource("kit_3")]
+position = Vector3(26, 3, -1.8)
+scale = Vector3(1, 1, 1)
+
+[node name="world" index="0" parent="Dressing/Kit_Lanterns_Lantern2"]
+
+[node name="kit_lantern_standing" index="0" parent="Dressing/Kit_Lanterns_Lantern2/world"]
+material_override = ExtResource("kit_7")
+cast_shadow = 0
+
+[node name="Kit_Lanterns_Lantern2_Mount" parent="Dressing" instance=ExtResource("kit_2")]
+position = Vector3(26, 2.5975, -1.8)
+scale = Vector3(1, 1.29875, 1)
+
+[node name="world" index="0" parent="Dressing/Kit_Lanterns_Lantern2_Mount"]
+
+[node name="kit_lantern_post" index="0" parent="Dressing/Kit_Lanterns_Lantern2_Mount/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Lanterns_Lantern3" parent="Dressing" instance=ExtResource("kit_3")]
+position = Vector3(44, 3, 1.8)
+scale = Vector3(1, 1, 1)
+
+[node name="world" index="0" parent="Dressing/Kit_Lanterns_Lantern3"]
+
+[node name="kit_lantern_standing" index="0" parent="Dressing/Kit_Lanterns_Lantern3/world"]
+material_override = ExtResource("kit_7")
+cast_shadow = 0
+
+[node name="Kit_Lanterns_Lantern3_Mount" parent="Dressing" instance=ExtResource("kit_2")]
+position = Vector3(44, 2.5975, 1.8)
+scale = Vector3(1, 1.29875, 1)
+
+[node name="world" index="0" parent="Dressing/Kit_Lanterns_Lantern3_Mount"]
+
+[node name="kit_lantern_post" index="0" parent="Dressing/Kit_Lanterns_Lantern3_Mount/world"]
+material_override = ExtResource("kit_6")
+
+[node name="Kit_Lanterns_Lantern4" parent="Dressing" instance=ExtResource("kit_3")]
+position = Vector3(52, 3, -1.8)
+scale = Vector3(1, 1, 1)
+
+[node name="world" index="0" parent="Dressing/Kit_Lanterns_Lantern4"]
+
+[node name="kit_lantern_standing" index="0" parent="Dressing/Kit_Lanterns_Lantern4/world"]
+material_override = ExtResource("kit_7")
+cast_shadow = 0
+
+[node name="Kit_Lanterns_Lantern4_Mount" parent="Dressing" instance=ExtResource("kit_2")]
+position = Vector3(52, 2.5975, -1.8)
+scale = Vector3(1, 1.29875, 1)
+
+[node name="world" index="0" parent="Dressing/Kit_Lanterns_Lantern4_Mount"]
+
+[node name="kit_lantern_post" index="0" parent="Dressing/Kit_Lanterns_Lantern4_Mount/world"]
+material_override = ExtResource("kit_6")

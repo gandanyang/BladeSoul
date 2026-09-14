@@ -1,0 +1,14 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/Dev/ModelShowcase.cs" id="1_ms"]
+
+[node name="ModelShowcaseAshigaruHead" type="Node3D"]
+script = ExtResource("1_ms")
+PlayerModelPath = ""
+EnemyModelPath = "res://assets/models/ashigaru_v2d_colored.glb"
+EnemyTargetHeight = 1.7
+ThirdModelPath = ""
+OutputPath = "res://assets/references/t27_ashigaru_head.png"
+CameraDistance = 1.0
+CameraHeight = 1.68
+LookAtHeight = 1.68

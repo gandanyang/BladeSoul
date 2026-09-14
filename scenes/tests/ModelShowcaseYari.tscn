@@ -1,0 +1,19 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/Dev/ModelShowcase.cs" id="1_ms"]
+
+[node name="ModelShowcaseYari" type="Node3D"]
+script = ExtResource("1_ms")
+PlayerModelPath = "res://assets/models/model_player_congyun_03_textured.glb"
+PlayerYawDegrees = 0.0
+EnemyModelPath = "res://assets/models/ashigaru_v2d_colored.glb"
+ThirdModelPath = "res://assets/models/yari_v1_colored.glb"
+ThirdLabel = "枪兵"
+OutputPath = "res://assets/references/t27_yari_showcase.png"
+PlayerTargetHeight = 1.75
+EnemyTargetHeight = 1.7
+ThirdTargetHeight = 1.7
+Spacing = 1.4
+CameraDistance = 4.6
+CameraHeight = 1.4
+LookAtHeight = 0.95

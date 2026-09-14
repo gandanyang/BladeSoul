@@ -6,7 +6,7 @@
 script = ExtResource("1_difficulty")
 Id = "kenshi"
 DisplayName = "剑客"
-DeflectWindowFrames = 12
+DeflectWindowFrames = 17
 GuardCancelLockFrames = 3
 GuardReentryLockFrames = 8
 IssenWindowFrames = 9

@@ -6,7 +6,7 @@
 script = ExtResource("1_difficulty")
 Id = "asura"
 DisplayName = "修罗"
-DeflectWindowFrames = 6
+DeflectWindowFrames = 8
 GuardCancelLockFrames = 4
 GuardReentryLockFrames = 8
 IssenWindowFrames = 6

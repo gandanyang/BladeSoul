@@ -1,0 +1,18 @@
+; T33 场景模块套件的**共享材质**（10 §3.6：地面/墙面各一套为主，
+; 靠 UV 与顶点色变化，**不要每块一个材质**）。
+;
+; 所以整个套件（地面 / 墙 / 柱 / 门洞 / 灯笼的结构件）**只有这一个材质**——
+; 颜色全部由顶点色带进来。这意味着铺装不增加材质数，只增加 draw call。
+;
+; ★ vertex_color_use_as_albedo 必须打开：glTF 导入**不会**自动开它
+;   （T35 验收第一版就是漏了这一步，本地生成的魔骸整片灰）。
+;
+; roughness 0.58 是 10 §3.1「湿（石板、木）→ 高光反射」的落点：
+; 太低会变成塑料，太高就失去"雨后"的信息。
+[gd_resource type="StandardMaterial3D" load_steps=1 format=3]
+
+[resource]
+vertex_color_use_as_albedo = true
+albedo_color = Color(1, 1, 1, 1)
+roughness = 0.58
+metallic = 0.0

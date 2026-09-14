@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Godot;
 using Oniblade.Combat;
 using Oniblade.Combat.Data;
@@ -29,6 +30,19 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 
 	/// <summary>难度档。弹开窗、输入缓冲这些宽容参数都从它读，不许写死在代码里。</summary>
 	[Export] public DifficultyProfile? Difficulty { get; set; }
+
+	/// <summary>
+	/// 弹开窗指示器的外观（`data/player/deflect_cue.tres`）。缺省时不建指示器，
+	/// 游戏照常能玩——它只是反馈，不参与任何判定。
+	/// </summary>
+	[Export] public DeflectCueProfile? DeflectCue { get; set; }
+
+	/// <summary>
+	/// 处决参数（`data/combat/deathblow.tres`，T52）：距离、演出帧数、无敌帧、伤害。
+	/// 缺省时**处决不能触发**（而不是退化成写死的默认值）——这样"忘了配资源"会
+	/// 立刻表现为"按 F 没反应"，而不是悄悄用一个没人审过的数字。
+	/// </summary>
+	[Export] public DeathblowProfile? Deathblow { get; set; }
 
 	[Export] public Color BodyColor { get; set; } = new(0.22f, 0.26f, 0.34f);
 	[Export] public Color AccentColor { get; set; } = new(0.55f, 0.16f, 0.14f);
@@ -74,6 +88,10 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 	private SpringArm3D _springArm = null!;
 	private BlockoutRig _rig = null!;
 	private HumanoidAnimator? _skinAnimator;
+
+	/// <summary>探针专用：拿到表现层的 animator（T52 腿部体检需要它的回放口）。</summary>
+	public HumanoidAnimator? SkinAnimatorForProbe => _skinAnimator;
+
 	private readonly PlayerInputBuffer _buffer = new();
 
 	/// <summary>本地帧号，只给"快速重按防御"判定用（02 §8）。</summary>
@@ -181,11 +199,17 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 			visual.RotationDegrees = VisualModelRotationDegrees;
 			AddChild(visual);
 			_rig.Visible = false;
-			_skinAnimator = new HumanoidAnimator(visual);
+			_skinAnimator = new HumanoidAnimator(visual)
+		{
+			// 下蹲深度是**角色体格**属性，从 data/actors 读（铁律 1：数值不进 C#）。
+			GuardCrouchDepth = Stats?.GuardCrouchDepth ?? 0f,
+		};
 		}
 
 
 		PrimaryHitbox = GetNodeOrNull<Hitbox>("Hitbox");
+
+		BuildDeflectCue();
 
 		// 笼手挂在玩家身上，吸附点就是玩家位置。
 		Gauntlet = new OniGauntlet { Name = "OniGauntlet" };
@@ -222,6 +246,9 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 		machine.Add(new ReviveState());
 		machine.Add(new ChargedAttackState());
 		machine.Add(new JumpState());
+		// T52：处决演出。**必须注册**——没注册时 `Change<T>()` 是静默丢弃的，
+		// 症状是"按 F 完全没反应"，一点报错都没有。
+		machine.Add(new DeathblowExecuteState());
 	}
 
 	/// <summary>防御键是否按住（<see cref="IGuardInput"/>）。敌人不实现它，所以不受防御状态影响。</summary>
@@ -279,7 +306,16 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 		_guardHeldLastFrame = guardHeld;
 
 		// 「深吸」：按住交互键强行吸魄，代价是侵蚀（03 §6.1）。
-		Gauntlet.SetDeepAbsorbing(Input.IsActionPressed("interact"));
+		//
+		// ★ 顺序（T52）：**处决优先于深吸**。两者共用交互键，而深吸是"按住持续生效"、
+		// 处决是"只在这一瞬间的窗口"。若让深吸先吃掉按键，玩家在破韧窗口里按住 F
+		// 会变成"一直在吸魄、就是不处决"——这是交互键复用最容易踩的坑。
+		// 完整的优先级阶梯在 `DeathblowResolver.PriorityOrder`（含对话与教学收刀）。
+		bool deepAbsorb = Input.IsActionPressed("interact");
+		if (Input.IsActionJustPressed("interact") && TryEnterDeathblow())
+			deepAbsorb = false;
+
+		Gauntlet.SetDeepAbsorbing(deepAbsorb);
 
 		if (Input.IsActionJustPressed("attack"))
 			_buffer.Push(PlayerAction.Attack);
@@ -307,7 +343,100 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 	}
 
 	/// <summary>
-	/// 跳跃（T41）。**只在"能自由行动"的状态起跳**——闪避/受击/一闪期间按跳不算，
+	/// 处决（T52）：破韧窗口内按交互键 → 演出 + 全程无敌。
+	///
+	/// **触发键是交互键 F/E，不是普攻键** —— 这条是项目主人的硬裁定：
+	/// 同键会让"砍几刀再处决"退化成"一想补刀就进处决"，
+	/// 玩家就再也感受不到"我先打崩它、再从容补刀"的节奏了。
+	/// 所以本方法的**唯一**调用点是 <c>PollLocalInput</c> 里的交互键分支，
+	/// 普攻链（<c>ConsumeAttackInput</c> 那条路）永远碰不到它。
+	///
+	/// 目标选择与距离判定在纯逻辑类 <see cref="DeathblowResolver"/> 里（有单测），
+	/// 本方法只负责"拿到最近的可处决目标 → 配置状态 → 切入"。
+	/// </summary>
+	private bool TryEnterDeathblow()
+	{
+		// 处决参数缺省时**不出招**（而不是退化成一个写死的默认值）：
+		// 忘了配 `data/combat/deathblow.tres` 应当表现为"按 F 没反应"，
+		// 让人一眼看出是配置问题，而不是悄悄用一个没人审过的数字。
+		if (Deathblow is null || IsDead)
+			return false;
+
+		// 已经在自己的一套动作里时不打断自己（同 TryEnterGuard 的纪律）
+		if (Machine.Current is AttackState or ChargedAttackState or HealState
+			or IssenState or DeathblowExecuteState or JumpState)
+			return false;
+
+		IDeathblowTarget? target = FindNearestDeathblowTarget();
+		if (target is null)
+			return false;
+
+		DeathblowExecuteState state = Machine.Get<DeathblowExecuteState>();
+		state.TotalFramesValue = Deathblow.TotalFrames;
+		state.InvulnerableFrames = Deathblow.InvulnerableFrames;
+		state.HitFrameValue = Deathblow.HitFrame;
+		state.Damage = Deathblow.Damage;
+		state.Target = target as CombatActor;
+
+		Machine.Change<DeathblowExecuteState>();
+
+		// ★ **必须告诉目标"你正在被处决"**（T52 端到端第一次跑就抓到了这一条）。
+		//
+		// 漏掉这一句的症状极其隐蔽：玩家侧演出照常播、伤害照常落地、敌人照常死，
+		// 所以"看起来全对"。但敌人其实一直停在 `PostureBrokenState` 里——
+		// 而**破韧态本身就不动**，于是"演出期间目标被钉住"这条断言照样通过。
+		// 换句话说，少调这一句，整条链路唯一的外在表现是
+		// **"被处决"这个动作从来没播过**（8 个动作里白做了一个）。
+		target.BeginBeingExecuted(Deathblow.TotalFrames);
+
+		// 转向目标：处决必须"面朝着它打"，否则演出里刀是朝空气挥的。
+		if (target is Node3D node)
+		{
+			Vector3 toTarget = node.GlobalPosition - GlobalPosition;
+			toTarget.Y = 0f;
+			if (toTarget.LengthSquared() > 0.0001f)
+				Rotation = new Vector3(0f, Mathf.Atan2(-toTarget.X, -toTarget.Z), 0f);
+		}
+
+		return true;
+	}
+
+	/// <summary>
+	/// 场上离得最近的、能处决的目标。
+	///
+	/// 用 <see cref="IsInstanceValid"/> 过滤：敌人被打死时节点会先释放，
+	/// 只判 null 会拿到失效引用（本项目修过同类缺陷）。而且这里**每帧都重查**，
+	/// 不做缓存——处决窗口只有 2 秒，缓存晚一帧就意味着窗口白白流走。
+	/// </summary>
+	private IDeathblowTarget? FindNearestDeathblowTarget()
+	{
+		if (Deathblow is null)
+			return null;
+
+		var candidates = new List<DeathblowCandidate>();
+		var targets = new List<IDeathblowTarget>();
+
+		foreach (Node node in GetTree().GetNodesInGroup(CombatActor.GroupName))
+		{
+			if (!IsInstanceValid(node) || node is not IDeathblowTarget target)
+				continue;
+
+			targets.Add(target);
+			candidates.Add(DeathblowCandidate.Make(
+				target.GlobalPosition.X,
+				target.GlobalPosition.Z,
+				target.CanBeExecuted));
+		}
+
+		int index = DeathblowResolver.Resolve(
+			new System.Numerics.Vector2(GlobalPosition.X, GlobalPosition.Z),
+			Deathblow.MaxDistance,
+			candidates);
+
+		return index >= 0 && index < targets.Count ? targets[index] : null;
+	}
+
+	/// <summary>跳跃（T41）。**只在"能自由行动"的状态起跳**——闪避/受击/一闪期间按跳不算，
 	/// 否则玩家能在受罚时用跳跃把自己救出来，那就等于给了一个免费的取消手段。
 	/// 数值全部来自 <see cref="JumpProfile"/>（data/player/jump.tres）。
 	/// </summary>
@@ -326,6 +455,26 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 			Machine.Get<JumpState>().Configure(JumpProfile.TakeoffSpeed, JumpProfile.LandRecoveryFrames);
 
 		Machine.ForceChange<JumpState>();
+	}
+
+	/// <summary>
+	/// 跳跃进行到哪一段（T38 的动画要它）：-1 = 没在跳、0 = 蹬地、1 = 腾空、2 = 落地缓冲。
+	///
+	/// **为什么用物理量反推、而不是问 `JumpState`**：`JumpState` 的 `_airborne` /
+	/// `_landedFrames` 都是私有的，可它们说的本就是"离没离地、落地多久了"——
+	/// `IsOnFloor()` 与 `Velocity.Y` 已经把同一件事讲清楚了：起跳那几帧脚还在地上、
+	/// 但 Y 速度已经朝上，这正是"蹬地"。为了让动画读同一件事去给状态类开三个只读属性，
+	/// 不如直接问物理（也少一处需要同步的接口）。
+	/// </summary>
+	private int JumpAnimPhase()
+	{
+		if (Machine.Current is not JumpState)
+			return -1;
+
+		if (!IsOnFloor())
+			return 1;                                   // 腾空
+
+		return Velocity.Y > 0.01f ? 0 : 2;              // 蹬地 / 落地缓冲
 	}
 
 	/// <summary>
@@ -597,14 +746,18 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 	/// 玩家只会觉得"我卡住了"，而不知道为什么。
 	///
 	/// 这里做两件事：记一个**可观测**的标记（自检证明这个钩子真的被调过），
-	/// 以及放一个**明显区别于普通格挡的姿态**（比普通受击更长更猛的后仰）。
-	/// 真正的"破防姿势"要等 T38 补动画，灰盒期复用受击通道是刻意的。
+	/// 以及放一个**明显区别于普通格挡的姿态**。
+	///
+	/// **T38 之后**：真模型有了**专属破防姿势**——手臂垂下去、上半身向后折，
+	/// 与格挡"抬手到身前"的形状正好相反（实测两者差 144°）。
+	/// 灰盒 `BlockoutRig` 仍然复用受击通道，它只有那一种表达。
 	/// </summary>
 	protected override void OnPostureBroken()
 	{
 		GuardBreakCount++;
 		_guardBreakShowFrames = GuardBreakShowFrames;
 		_rig?.PlayGuardBreak();
+		_skinAnimator?.PlayGuardBreak(GuardBreakShowFrames);
 
 		// ★ 必须清架势，和 TrainingDummy / AttackingDummy 的 OnPostureBroken 保持一致。
 		// 不清的后果是**死亡螺旋**：PostureMeter.Tick 在 IsBroken 时直接 return（不回复），
@@ -656,9 +809,16 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 		dodge.InvulnerableFrames = Difficulty?.DodgeIFrames ?? 0;
 		dodge.RecoveryFrames = Difficulty?.DodgeRecoveryFrames ?? 0;
 		dodge.Speed = MoveSpeed * DodgeSpeedScale;
-		dodge.Direction = ResolveDodgeDirection();
+
+		Vector3 dodgeDirection = ResolveDodgeDirection();
+		dodge.Direction = dodgeDirection;
 
 		Machine.Change<DodgeState>();
+
+		// T38：闪避的姿势要**知道往哪边扑**——左右闪与前后闪的轮廓不一样。
+		// 方向在这一刻锁定（闪避全程不转向），所以传一次就够；
+		// 帧数取"无敌 + 后摇"，两个数都来自难度档，动画器里不存任何数值。
+		_skinAnimator?.PlayDodge(dodgeDirection, dodge.InvulnerableFrames + dodge.RecoveryFrames);
 	}
 
 	/// <summary>闪避方向：有方向输入就朝那个方向闪；没有就后跳（相对相机向后退）。</summary>
@@ -677,7 +837,14 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 	public override bool IsInvulnerableNow =>
 		base.IsInvulnerableNow
 		|| _reviveInvulnerableFramesLeft > 0
-		|| (Machine is { Current: DodgeState dodge } && dodge.IsInvulnerableNow);
+		|| (Machine is { Current: DodgeState dodge } && dodge.IsInvulnerableNow)
+		// T52 处决：**演出期间全程无敌**。
+		//
+		// 这里刻意**不新增裁决分支**：`CombatResolver` 规则 1 已经在读
+		// `DefenderSnapshot.IsInvulnerable`（它由这个属性填充），判 Miss 之后
+		// 连一闪都打不中。于是"处决期间另一个敌人来砍，玩家不掉血"
+		// **是白拿的**——而且对**所有**敌人同时生效，不用一个个去改。
+		|| (Machine is { Current: DeathblowExecuteState deathblow } && deathblow.IsInvulnerableNow);
 
 	/// <summary>本场战斗成功躲开的攻击次数（完美闪避的证据，T13 端到端测试断言它）。</summary>
 	public int EvadedAttackCount { get; private set; }
@@ -747,6 +914,10 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 		heal.HealAmount = Mathf.RoundToInt((Stats?.MaxHealth ?? 100) * (Stats?.HealPercent ?? 0f));
 
 		Machine.Change<HealState>();
+
+		// T38：喝血的三段姿势（掏壶 / 饮用 / 收招）。帧数直接来自状态里刚写入的三个字段——
+		// 动画与逻辑读的是同一组数字，所以"手举到嘴边"那一拍**结构上**就落在饮用段里（04 §12）。
+		_skinAnimator?.PlayHeal(heal.StartupFrames, heal.DrinkFrames, heal.RecoveryFrames);
 	}
 
 	// ── 死亡与原地重开（T14 / 01 §0 规则 1）─────────────────────
@@ -812,10 +983,13 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 		ReviveState revive = Machine.Get<ReviveState>();
 		revive.DurationFrames = performance;
 
-		// 演出：灰盒期先复用一次大幅度的受击反馈（"倒下去再撑起来"），
-		// 专门的起身姿势属于动画管线（T24/T25）。
+		// 灰盒仍然复用一次大幅受击——`BlockoutRig` 只有"抖一下"这一种表达。
 		_rig.PlayHitReact(2f, HitStunFrames);
-		_skinAnimator?.PlayHitReact(2f, HitStunFrames);
+
+		// T38：真模型**有了自己的死亡姿势**——倒地 → 伏着 → 撑起来。
+		// 上一版这里复用的也是受击，读起来只是"抖了一下"，玩家看不出自己刚死过一次。
+		// 帧数就用复活演出自己的时长（`ActorStats.RevivePerformanceFrames`，来自数据）。
+		_skinAnimator?.PlayDeath(performance);
 
 		Machine.ForceChange<ReviveState>();
 	}
@@ -1200,13 +1374,128 @@ public partial class PlayerActor : CombatActor, IGuardInput, IAttackEvasionListe
 		_rig.AnimateLocomotion(speed01, dt);
 		_rig.AnimateCombat(dt);
 
+		UpdateDeflectCue();
+
 		if (_skinAnimator is not null)
 		{
 			// T38：防御改成**三态**（抬起/维持/放下），靠"进入防御后的帧号"驱动；
 			// 攻击姿势同样由**状态自己的帧号**算出，所以动画与逻辑不会漂（04 §12）。
 			_skinAnimator.TrackGuard(Machine.Current is GuardState guard ? guard.Frame : -1);
+			// T38：跳跃要**逐帧**知道自己在哪一段（蹬地 / 腾空 / 落地缓冲）——
+			// 滞空多少帧是物理结果、不是数据里的固定帧数，所以它没法像攻击那样"播一段"。
+			_skinAnimator.TrackJump(JumpAnimPhase(), JumpProfile?.LandRecoveryFrames ?? 0);
 			_skinAnimator.AnimateLocomotion(speed01, dt);
 			_skinAnimator.AnimateCombat(dt, Machine.Current is AttackState attack ? attack.Frame : -1);
+		}
+	}
+
+	// ── 弹开窗指示器（T51）───────────────────────────────────────────
+	//
+	// 它解决的是**认知问题**，不是判定问题。实测结论（`GuardWindowProbe`）：
+	// 弹开窗只在按下防御键那一刻开一次、宽 DeflectWindowFrames 帧，之后整段防御
+	// 再也不开。而敌人前摇 24 帧 > 窗口宽度，所以"按住右键等刀来"必然错过——
+	// 玩家体验到的就是"能挡但从来弹不开"。
+	//
+	// 规则的形状没问题（点按的有效区间精确等于配置宽度），缺的是**玩家看不见它**。
+	// 这个环就是那条反馈：窗口开着的每一帧，脚下有一圈光，越接近关闭越亮。
+
+	private MeshInstance3D? _deflectCue;
+	private StandardMaterial3D? _deflectCueMaterial;
+
+	/// <summary>
+	/// 建指示器。**代码里不写任何尺寸/颜色**——全部来自 <see cref="DeflectCue"/>（铁律 1）。
+	/// 没配资源就不建，游戏照常能玩：它只是反馈，不参与判定。
+	/// </summary>
+	private void BuildDeflectCue()
+	{
+		if (DeflectCue is null)
+			return;
+
+		var ring = new TorusMesh
+		{
+			// TorusMesh 的内径是**洞的半径**，不是管子的粗细，所以这里要减出来。
+			InnerRadius = Mathf.Max(0.01f, DeflectCue.Radius - DeflectCue.Thickness),
+			OuterRadius = DeflectCue.Radius + DeflectCue.Thickness,
+		};
+
+		_deflectCueMaterial = new StandardMaterial3D
+		{
+			AlbedoColor = DeflectCue.OpenColor,
+			EmissionEnabled = true,
+			Emission = DeflectCue.EmissionColor,
+			EmissionEnergyMultiplier = DeflectCue.EmissionEnergy,
+			// 光环不该被自身阴影吃暗，也不该挡住地面判定。
+			ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+			Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+			CullMode = BaseMaterial3D.CullModeEnum.Disabled,
+		};
+
+		_deflectCue = new MeshInstance3D
+		{
+			Name = "DeflectCue",
+			Mesh = ring,
+			MaterialOverride = _deflectCueMaterial,
+			// 纯表现层：不投影、不参与任何碰撞查询。
+			CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+			Visible = false,
+		};
+
+		AddChild(_deflectCue);
+	}
+
+	/// <summary>
+	/// 每帧同步指示器。
+	///
+	/// **它只回答一个是非题：「现在按下去算不算弹开」。**
+	///
+	/// 所以它是一盏**静态的灯**：不渐变、不脉冲、不自转。
+	///
+	/// 两次都是实测把动效否掉的：
+	/// 1. 第一版加了"越接近关闭越亮"——**方向是反的**。光环亮着本身就意味着
+	///    "现在按下去能弹开"，再去强调"快没了"只会读成"该按了"，而它恰恰马上要熄。
+	/// 2. 第二版留了自转当"活气"。实测同一窗口内第 10 帧 vs 第 14 帧，
+	///    0.61% 像素在变、最大单像素差 197，差异全落在脚下环的区域
+	///    （y 400~519，质心 576,467）——环在肉眼里是圆，`TorusMesh` 的几何并不
+	///    各向同性，转起来每帧轻微闪动。
+	///
+	/// 一个"能不能弹开"的判据不该自带噪声。会说话的东西只能有一句台词：
+	/// **亮 = 能弹开，灭 = 只剩格挡。**
+	///
+	/// 灭的代价是真实的：窗口过期后再按住只有格挡，每挨一刀扣 20~45 架势槽
+	/// （`CombatResolver` 第 5 条：Block 走 `atk.Traits.PostureDamage`，
+	/// 而 Deflect 的只给敌人 +18、自己 0）。
+	/// </summary>
+	private void UpdateDeflectCue()
+	{
+		if (_deflectCue is null || DeflectCue is null)
+			return;
+
+		if (DeflectWindowFramesLeft <= 0)
+		{
+			_deflectCue.Visible = false;
+			return;
+		}
+
+		// 开窗那一刻**只写一次**材质与变换。
+		//
+		// 为什么不是"每帧写同样的值"——那样逻辑上等价，**但实测不等价**：
+		// 每帧赋 `AlbedoColor` / `Emission` 会不断触发材质属性更新，实测同一窗口内
+		// 相邻两帧就有 0.61% 像素在变、最大单像素差 197，且全都落在脚下环的区域——
+		// 环看起来在闪。一个"能不能弹开"的判据不该自带噪声。
+		// 所以它是：开一次、写一次、然后不动。
+		if (_deflectCue.Visible)
+			return;
+
+		_deflectCue.Visible = true;
+		_deflectCue.Position = new Vector3(0f, DeflectCue.HeightOffset, 0f);
+		_deflectCue.Scale = Vector3.One;
+		_deflectCue.Rotation = Vector3.Zero;
+
+		if (_deflectCueMaterial is not null)
+		{
+			_deflectCueMaterial.AlbedoColor = DeflectCue.OpenColor;
+			_deflectCueMaterial.Emission = DeflectCue.EmissionColor;
+			_deflectCueMaterial.EmissionEnergyMultiplier = DeflectCue.EmissionEnergy;
 		}
 	}
 

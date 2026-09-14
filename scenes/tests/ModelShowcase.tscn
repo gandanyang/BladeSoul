@@ -4,6 +4,7 @@
 
 [node name="ModelShowcase" type="Node3D"]
 script = ExtResource("1_ms")
-PlayerModelPath = "res://assets/models/model_player_congyun_01.glb"
+PlayerModelPath = "res://assets/models/model_player_congyun_03_textured.glb"
+PlayerYawDegrees = 0.0
 EnemyModelPath = "res://assets/models/ashigaru_v2d_clean.glb"
 OutputPath = "res://assets/references/t35_model_showcase.png"

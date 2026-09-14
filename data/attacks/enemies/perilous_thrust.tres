@@ -21,3 +21,4 @@ Thrust = true
 Perilous = true
 PerilousKind = 1
 AnimName = "perilous_thrust"
+Whoosh = 0

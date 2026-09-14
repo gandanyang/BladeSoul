@@ -6,10 +6,12 @@
 [ext_resource type="Resource" path="res://data/difficulty/samurai.tres" id="4_difficulty"]
 [ext_resource type="Script" path="res://src/Combat/Hitbox.cs" id="5_hitbox"]
 [ext_resource type="Script" path="res://src/Combat/Hurtbox.cs" id="6_hurtbox"]
-[ext_resource type="PackedScene" path="res://assets/models/model_player_congyun_01.glb" id="7_model"]
+[ext_resource type="PackedScene" path="res://scenes/actors/PlayerVisual.tscn" id="7_model"]
 [ext_resource type="Script" path="res://src/Player/FallGuard.cs" id="8_fallguard"]
 [ext_resource type="Resource" path="res://data/player/fall_recovery.tres" id="9_fallprofile"]
 [ext_resource type="Resource" path="res://data/player/jump.tres" id="10_jumpprofile"]
+[ext_resource type="Resource" path="res://data/player/deflect_cue.tres" id="11_deflectcue"]
+[ext_resource type="Resource" path="res://data/combat/deathblow.tres" id="12_deathblow"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
 radius = 0.35
@@ -31,8 +33,11 @@ Stats = ExtResource("2_stats")
 Attacks = ExtResource("3_combo")
 Difficulty = ExtResource("4_difficulty")
 VisualModel = ExtResource("7_model")
-VisualModelScale = 1.75
+VisualModelScale = 0.888
+VisualModelRotationDegrees = Vector3(0, 180, 0)
 JumpProfile = ExtResource("10_jumpprofile")
+DeflectCue = ExtResource("11_deflectcue")
+Deathblow = ExtResource("12_deathblow")
 
 [node name="FallGuard" type="Node3D" parent="."]
 script = ExtResource("8_fallguard")

@@ -1,0 +1,15 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/Dev/PropFitShowcase.cs" id="1_prop"]
+
+[node name="ModelShowcaseAshigaruDressed" type="Node3D"]
+script = ExtResource("1_prop")
+BodyModelPath = "res://assets/models/ashigaru_v2d_colored.glb"
+BodyTargetHeight = 1.7
+BodyYawDegrees = 0.0
+HatModelPath = "res://assets/models/jingasa_v1_colored.glb"
+HatOffset = Vector3(0.0009, 0.8, -0.0639)
+BladeModelPath = "res://assets/models/uchigatana_v1_colored.glb"
+BladeOffset = Vector3(0.68, 0.037, -0.057)
+BladeRotationDegrees = Vector3(180, 0, 0)
+OutputPath = "res://assets/references/t27_ashigaru_dressed.png"

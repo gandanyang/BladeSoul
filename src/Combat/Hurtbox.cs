@@ -17,6 +17,24 @@ public partial class Hurtbox : Area3D
 
 	public CombatActor OwnerActor { get; private set; } = null!;
 
+	/// <summary>
+	/// 特效与伤害数字要的"打在哪里"参考点。
+	/// Hurtbox 节点本身通常**没有 transform**（直接挂在角色根上，位置＝脚底），
+	/// 真正的受击体积在它的 <see cref="CollisionShape3D"/> 子节点上（胸口高度）——
+	/// 必须取子节点的世界位置；没有子节点时退回自身（不比以前差）。
+	/// </summary>
+	public Vector3 GlobalContactPoint
+	{
+		get
+		{
+			foreach (Node child in GetChildren())
+				if (child is CollisionShape3D shape)
+					return shape.GlobalPosition;
+
+			return GlobalPosition;
+		}
+	}
+
 	public override void _EnterTree() => AddToGroup("hurtbox");
 
 	public override void _Ready()

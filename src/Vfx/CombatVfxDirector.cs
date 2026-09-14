@@ -1,5 +1,6 @@
 using Godot;
 using Oniblade.Combat;
+using Oniblade.Combat.Data;
 using Oniblade.Core;
 using Oniblade.World;
 
@@ -84,12 +85,20 @@ public partial class CombatVfxDirector : Node
 			return;
 		}
 
-		AddChild(SparkBurst.Create(e.Position, e.Direction, clash));
-
 		if (clash)
+		{
+			AddChild(SparkBurst.Create(e.Position, e.Direction, clash: true));
 			ClashSparkCount++;
-		else
-			DeflectSparkCount++;
+			return;
+		}
+
+		// T53：弹开的火花按**攻击性质**分档（斩/打/突/暗）。
+		// 数据缺失时 For() 返回 null → SparkBurst 退化成 T53 之前的默认观感，
+		// 所以"没配数据"表现为**照旧**，而不是"没有火花"。
+		DeflectFeedbackProfile? profile = DeflectFeedbackSet.Load()?.For(e.AttackType);
+
+		AddChild(SparkBurst.Create(e.Position, e.Direction, profile));
+		DeflectSparkCount++;
 	}
 
 	private void SpawnMist(in HitEvent e)

@@ -1,4 +1,5 @@
 using Godot;
+using Oniblade.Audio;
 
 namespace Oniblade.Combat.Data;
 
@@ -62,6 +63,22 @@ public partial class AttackData : Resource
     [Export] public Shape3D? HitShape { get; set; }
     [Export] public string AnimName { get; set; } = "";
     [Export] public PackedScene? HitFx { get; set; }
+
+    [ExportGroup("音效")]
+
+    /// <summary>
+    /// 刀风用轻的还是重的。**由数据决定**，不按伤害在代码里猜——
+    /// 突刺没挥砍声、大上段该用重风，这类判断只有招式表知道。
+    /// </summary>
+    [Export] public WhooshKind Whoosh { get; set; } = WhooshKind.Light;
+
+    /// <summary>刀风音量（dB）。负值变小。</summary>
+    [Export] public float WhooshVolumeDb { get; set; }
+
+    /// <summary>
+    /// 刀风音高倍率。同一套连段里三段用不同的音高，耳朵才听得出"这是第二刀"。
+    /// </summary>
+    [Export] public float WhooshPitchScale { get; set; } = 1f;
 
     // ── 派生属性：统一转成纯结构再算，保证与单测用的是同一套逻辑 ──
     public AttackTiming ToTiming() => new()

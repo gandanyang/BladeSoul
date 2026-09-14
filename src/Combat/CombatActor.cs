@@ -39,6 +39,15 @@ public abstract partial class CombatActor : CharacterBody3D, ICombatActorDebug, 
 	/// <summary>体干破裂（破防）的硬直帧数（02 文档 §5：50 帧）。</summary>
 	[Export] public int GuardBreakStunFrames { get; set; } = 50;
 
+	/// <summary>
+	/// 弹开连击的**保持窗口**（帧）。上一次弹开之后这么久没有再弹开，连击归零。
+	///
+	/// T51 遗留①：这个数原来是写死在 <c>Verdict.Deflect</c> 分支里的 <c>90</c>，
+	/// 而它同时是**屏显连击的语义**——"×3 还在不在"完全由它决定，HUD 只能跟着猜。
+	/// 按铁律 1 提成 [Export]：数字只有一个来源，改它不用改代码。
+	/// </summary>
+	[Export] public int DeflectChainWindowFrames { get; set; } = 90;
+
 	public HealthMeter Health { get; private set; } = null!;
 	public PostureMeter Posture { get; private set; } = null!;
 	public StateMachine Machine { get; private set; } = null!;
@@ -108,9 +117,18 @@ public abstract partial class CombatActor : CharacterBody3D, ICombatActorDebug, 
 	/// </summary>
 	private static int NextAutoActorId() => ++_lastAutoActorId;
 
+	/// <summary>
+	/// 所有战斗单位所在的 Godot 组名。
+	///
+	/// 提成常量（而不是散落的 <c>"combat_actor"</c> 字面量）：T52 的处决要在
+	/// "场上所有可处决目标"里挑最近的，写错一个字母的症状是**安安静静找不到任何目标**
+	/// ——"按 F 没反应"，而且不会报错。同类常量见 <c>OniGauntlet.GroupName</c>。
+	/// </summary>
+	public const string GroupName = "combat_actor";
+
 	public override void _Ready()
 	{
-		AddToGroup("combat_actor");
+		AddToGroup(GroupName);
 
 		// ActorId 的唯一性被 CombatArbiter 的确定性排序依赖（04 §15），
 		// 而手工填 id 已经**静默撞号两次**（道场里两个 TrainingDummy 都是 100；
@@ -247,6 +265,15 @@ public abstract partial class CombatActor : CharacterBody3D, ICombatActorDebug, 
 
 	public virtual bool IsInvulnerableNow => DebugInvulnerable;
 
+	/// <summary>
+	/// 能不能被处决（T52）。基类恒为 false —— **只有实现了 <see cref="IDeathblowTarget"/>
+	/// 的敌人会被破韧、才会变成 true**（例如 <c>Ashigaru</c> 覆写它）。
+	///
+	/// 它存在只是为了给处决标记 UI 一个不依赖具体类型的读数口
+	/// （见 <see cref="ICombatActorDebug"/> 的登记说明）。
+	/// </summary>
+	public virtual bool CanBeExecutedNow => false;
+
 	// ── 判定用的快照 ─────────────────────────────────────────────
 
 	public bool IsAttackActiveNow => PrimaryHitbox is { IsActiveThisFrame: true };
@@ -332,8 +359,11 @@ public abstract partial class CombatActor : CharacterBody3D, ICombatActorDebug, 
 				FreezeBoth(attacker, result.HitStopFrames);
 				attacker?.ApplyPostureDamage(result.PostureDamage);   // 弹开削的是攻方体干
 				GrantIssen(result.GrantIssen, result.GrantIssenFrames);
-				DeflectChain++;
-				_deflectChainResetFrames = 90;
+
+				// ★ 必须在 OnVerdictReceived（它会 RaiseHitResolved）**之前**加。
+				// 音频总监是按同一条链决定音高的，反过来的话它拿到的是上一档的值。
+				SetDeflectChain(DeflectChain + 1);
+				_deflectChainResetFrames = DeflectChainWindowFrames;
 				OnVerdictReceived(result);
 				return;
 
@@ -470,7 +500,7 @@ public abstract partial class CombatActor : CharacterBody3D, ICombatActorDebug, 
 		IssenBuff = IssenKind.None;
 		IssenBuffFramesLeft = 0;
 		DeflectWindowFramesLeft = 0;
-		DeflectChain = 0;
+		SetDeflectChain(0);
 
 		IsGuarding = false;
 		IsDead = false;
@@ -510,6 +540,9 @@ public abstract partial class CombatActor : CharacterBody3D, ICombatActorDebug, 
 
 	int ICombatActorDebug.HalfAutoGuardChargesLeft => HalfAutoGuardChargesLeftForUi;
 
+	/// <summary>T52：处决标记 UI 的读数口（只读，不许战斗逻辑走它）。</summary>
+	bool ICombatActorDebug.CanBeExecuted => CanBeExecutedNow;
+
 	/// <summary>
 	/// 当前正在打出来的这一招是不是「危」。
 	/// T37 的半自动防御只对一般攻击生效（05 §128），靠它把危排除掉。
@@ -520,6 +553,26 @@ public abstract partial class CombatActor : CharacterBody3D, ICombatActorDebug, 
 	public int StateFrame => Machine?.Current?.Frame ?? 0;
 	public int StateTotalFrames => Machine?.Current?.TotalFrames ?? 0;
 	public bool IsInvulnerable => IsInvulnerableNow;
+	/// <summary>
+	/// 空中控制强度（0 = 完全不改向、纯惯性；1 = 空中和地面一样听话）。
+	///
+	/// 它同时是两个旋钮：**跳跃跳多远** 与 **空中能不能拐弯**。
+	/// 默认给一个"有冲量但仍能微调"的值——纯惯性会让跳跃变成不可控的抛物线，
+	/// 而 1.0 正是本次修复之前的"没有惯性"（水平速度每帧被输入覆盖成 0）。
+	/// </summary>
+	[ExportGroup("移动")]
+	[Export(PropertyHint.Range, "0,1,0.01")]
+	public float AirControl { get; set; } = 0.15f;
+
+	/// <summary>
+	/// 最后一次"确实在地面上跑出来"的水平速度（忽略 Y）。
+	///
+	/// 存在的理由见 <see cref="ApplyMovement"/>：松键那一帧人还在地面上，
+	/// 地面分支会把速度写成 0，于是**离地前惯性就没了**。
+	/// 空中没有输入时回落到这个值，跳跃才有惯性。
+	/// </summary>
+	private Vector3 _groundVelocity;
+
 	public string CurrentAttackId { get; private set; } = string.Empty;
 
 	// ── IDebugCheatable（只对调试开放）───────────────────────────
@@ -553,8 +606,32 @@ public abstract partial class CombatActor : CharacterBody3D, ICombatActorDebug, 
 		{
 			_deflectChainResetFrames--;
 			if (_deflectChainResetFrames == 0)
-				DeflectChain = 0;
+				SetDeflectChain(0);
 		}
+	}
+
+	/// <summary>
+	/// 弹开连击的**唯一写入点**（随之广播 <see cref="DeflectChainEvent"/>）。
+	///
+	/// 为什么要收成一处：T51 交接里记的那条缺陷就是"改了一处、漏了另一处"——
+	/// 事件只在涨的时候发得出去，断连那半边从来不发，于是订阅者眼里的连击
+	/// **只增不减**。三个变化点（弹开 +1 / 窗口超时归零 / 复活复位）全都走这里，
+	/// 以后再加变化点也不会漏。
+	///
+	/// 事件**只由战斗层发**：音频总监的"音高连击"与 HUD 的屏显连击语义不同，
+	/// 但它必须是这条链的消费者，不能自己再发一份（那样同一种事件就有两个生产者）。
+	/// </summary>
+	private void SetDeflectChain(int chain)
+	{
+		if (DeflectChain == chain)
+			return;
+
+		DeflectChain = chain;
+		EventBus.Instance?.RaiseDeflectChain(new DeflectChainEvent
+		{
+			ActorId = this.ActorId,
+			Chain = chain,
+		});
 	}
 
 	private void FreezeBoth(CombatActor? attacker, int frames)
@@ -580,8 +657,47 @@ public abstract partial class CombatActor : CharacterBody3D, ICombatActorDebug, 
 			velocity.Y -= Gravity * dt;
 		}
 
-		velocity.X = DesiredVelocity.X;
-		velocity.Z = DesiredVelocity.Z;
+		// 水平速度：地面直接听输入，**空中保留惯性**（T52 试玩反馈"跳跃没有移动惯性"）。
+		//
+		// 原来这里是**无条件** `velocity.XZ = DesiredVelocity.XZ`，而
+		// `_PhysicsProcess` 每帧开头先把 `DesiredVelocity` 清零，只有本帧真按着方向键
+		// 才会被重新写上。于是**一松开方向键，水平速度立刻变 0**。
+		//
+		// ⚠️ 但"空中保留惯性"这一条**还不够**，实测仍然保留 0%：
+		//   松键那一帧人**还在地面上**（`IsOnFloor()` 仍为真），
+		//   地面分支照样把速度写成 `DesiredVelocity`（= 0）——
+		//   **惯性在离地之前就已经被抹掉了**，空中再想保留也没东西可保留。
+		//
+		// 所以这里要两件事一起做：
+		//   1. **地面**：记下"最后一次真正在地面上跑出来的水平速度"`_groundVelocity`；
+		//      但只在 `DesiredVelocity` 非零（人确实在动）时才记——
+		//      否则松键松手的那一帧会用 0 把记录覆盖掉，等于没记。
+		//   2. **空中**：没有移动意图时**回落到 `_groundVelocity`**，而不是 0。
+		//
+		// 有移动意图时按 `AirControl` 在两者之间插值：系数小 = 冲量大、转向重（真惯性）；
+		// 系数大 = 空中灵活。所以它同时是"跳多远"和"空中能否拐弯"两个旋钮。
+		Vector3 desired = new(DesiredVelocity.X, 0f, DesiredVelocity.Z);
+		bool hasIntent = desired.LengthSquared() > 0f;
+
+		if (IsOnFloor())
+		{
+			velocity.X = desired.X;
+			velocity.Z = desired.Z;
+
+			// 只在"确实在动"时记 —— 见上面 ⚠️
+			if (hasIntent)
+				_groundVelocity = new Vector3(desired.X, 0f, desired.Z);
+		}
+		else
+		{
+			Vector3 keep = hasIntent
+				? new Vector3(Mathf.Lerp(velocity.X, desired.X, Mathf.Clamp(AirControl, 0f, 1f)), 0f,
+					Mathf.Lerp(velocity.Z, desired.Z, Mathf.Clamp(AirControl, 0f, 1f)))
+				: _groundVelocity;
+
+			velocity.X = keep.X;
+			velocity.Z = keep.Z;
+		}
 
 		Velocity = velocity;
 		MoveAndSlide();

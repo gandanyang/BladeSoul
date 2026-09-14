@@ -17,3 +17,6 @@ Knockback = 1.0
 AdvanceDistance = 2.0
 Thrust = true
 AnimName = "thrust"
+Whoosh = 1
+WhooshVolumeDb = -8.0
+WhooshPitchScale = 1.2

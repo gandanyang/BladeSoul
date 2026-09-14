@@ -60,4 +60,14 @@ public interface ICombatActorDebug
     /// 调试面板的 WINDOWS 区块用它。
     /// </summary>
     string InputBufferDebug { get; }
+
+    /// <summary>
+    /// 此刻能不能被处决（T52 追加，处决标记 UI 用它）。
+    /// **只加不改**：只有实现了 <c>IDeathblowTarget</c> 的敌人有这个状态，其它单位恒为 false。
+    ///
+    /// 走这个只读接口而不是让 UI 去认 <c>Ashigaru</c> 类型 —— 那是 §2.8 明令禁止的
+    /// （"任何 UI 都不许引用 CombatActor 具体类型"）。将来第二种敌人只要实现这个属性，
+    /// 处决标记就自动生效，UI 一行都不用改。
+    /// </summary>
+    bool CanBeExecuted { get; }
 }

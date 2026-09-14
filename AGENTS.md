@@ -38,7 +38,8 @@
 powershell -NoProfile -File tools\check.ps1
 ```
 
-12 步：编译 → xUnit 单测 → 资源自检 → 8 个端到端场景。**输出必须是 `ALL CHECKS PASSED`（退出码 0）。**
+37 步：编译 → xUnit 单测 → **两道棘轮**（死配置 / `async void`）→ 资源自检 → 端到端场景 → **腿部几何不变量**。
+**输出必须是 `ALL CHECKS PASSED`（退出码 0）。**
 
 **开工前先跑一次**，确认当前是绿的——工作区里可能有别的 agent 的在制品。
 单跑某一步：`godot --headless --path . res://scenes/tests/<场景>.tscn`
@@ -97,6 +98,10 @@ Get-ChildItem -Recurse src -File | Sort LastWriteTime -Desc | Select -First 5
 | 覆写虚方法忘了 `base` | 静默丢掉基类行为（如「危」预警） | 覆写时先想"基类有没有做事" |
 | **用 Blender 前不读 docs/17** | 重新探"装没装 / 走不走代理 / 能不能无头"，纯浪费 | **先读 [docs/17](docs/17-Blender与AI工具链.md)**；资产脚本统一 `--background --factory-startup` |
 | **模型里混着垃圾对象** | 主角模型里藏着 80 面的单位球（把包围盒撑到 ±1），会误导所有按尺寸做的判断 | 先量包围盒；不合理就怀疑有杂物 |
+| **探针测错对象**（本轮连撞 5 次） | 工具给出**精确但错误**的答案，比不测更危险：① 直接写骨测到"离地 65cm"，真实链路是 33cm；② 用 `TrackGuard()` 想钉住格挡帧，被 `PlayerActor` 每帧覆盖 → 全 0；③ 把 `GetBoneGlobalPose`（**相对骨架空间**）当世界坐标 → 根骨骼下沉看不见；④ 基准没在每轮重置 → 数字累加 195→379→609；⑤ 判据用"首帧速度"判跳跃惯性，而起跳帧本就还在蹬地 | **改被测对象前先自证探针**：跑一组"已知答案"的对照（如静止站姿必须等于基准）。姿势定标一律**参数化进被测类**（`ForcedGuardFrame` / `GuardThighAngle`）再走真实链路，不许旁路写骨。**测出的数字若和上一轮对不上，先怀疑口径，不要怀疑实现** |
+| **动画姿势的"符号反了"** | **逻辑全绿、但角色看起来不是人**：T52 试玩"弹开时腿反着往前弯曲"。根因是 `Rot()` 在腿部骨骼上的正负号与直觉相反（本模型 `L_Thigh` 的 rest 旋转是 180°），于是"屈膝"写成了"脚向前翘"。坐下 18 帧反折时 **check.ps1 的 36 步全是绿的** | 别靠肉眼判"哪边是前"（`Hip` 的 `+Z` 其实是**身后**）。用**几何硬事实**判：脚必须低于膝。已由 `check.ps1` 第 37 步把守；`HumanoidAnimator.Diagnostics` 可查"这根骨这一帧是谁写的" |
+| **`async void` 承载可失败流程** | **异常静默消失**，现场表现千奇百怪：日志里堆 2 万行没人看见（T49/T50 的 755 次 `ObjectDisposedException`）；或者**测试跑到一半不动、零错误输出、最后超时**（T52）；或者一闪只剩半截音效（`AudioDirector`） | **工程红线**，已由 `tools/check_async_void.ps1` 棘轮把守（生产零容忍）。改法：`void _Ready() => _ = RunAsync();` + `RunAsync()` 里 try/catch，catch 中 `PrintErr` + `Quit(1)`。详见 §9 |
+| **对已释放的 Godot 节点调 `QueueFree()`** | 同上：C# 包装对象**释放后仍非 null**，只判 `null` 会拿到失效引用 → `ObjectDisposedException` → 在 `async void` 里被吞 | 一律 `GodotObject.IsInstanceValid(node)` 判活；测试里有 `SafeFree()` helper 可抄 |
 
 ---
 
@@ -120,7 +125,9 @@ Get-ChildItem -Recurse src -File | Sort LastWriteTime -Desc | Select -First 5
 - **能玩**：道场（`scenes/levels/Dojo.tscn`）—— WASD 移动 / 鼠标视角 / 左键或 J 三连 /
   **右键格挡与弹开** / 空格闪避 / R 喝血 / 长按 R 深吸 / **一闪** /
   **战斗 HUD**（血槽·架势槽·伤害数字·未锁定敌人头顶条）；场上已有上色版魔骸足兵
-- **验证**：**26 步全绿，164 项单测**（`powershell -NoProfile -File tools\check.ps1`）
+- **验证**：**37 步全绿，239 项单测**（`powershell -NoProfile -File tools\check.ps1`）。
+  另有两道静态棘轮：死配置零引用、`async void`（见 §6 / §9）；
+  以及**表现层几何不变量**（第 37 步：脚必须低于膝，见 §6）
 - **当前里程碑**：**M5 途中**（垂直切片）——代码已**越过 M4**，
   卡在"**没有遭遇战编排、没有存档点**"（细分见 `docs/14-下一阶段排期.md`）
 - **M1 唯一的验收标准**：**"弹开成功时会想再试一次。"** —— 这一条只能由真人试出来，
@@ -130,3 +137,40 @@ Get-ChildItem -Recurse src -File | Sort LastWriteTime -Desc | Select -First 5
 
 > ⚠️ 排期与阻塞先看 `docs/14-下一阶段排期.md`——它会告诉你"什么卡着什么"，
 > 免得只按最近一次试玩反馈来决定做什么。
+
+---
+
+## 9. 工程红线：禁止 `async void` 承载可失败流程
+
+**为什么它值得单独一节**：同一个陷阱在本项目**撞了三次** ——
+
+| 卡 | 现场表现 |
+|---|---|
+| T49 / T50 | 755 次 `ObjectDisposedException` 累积在日志里，**没有一条被看见** |
+| T52 | `EnemyDeathblowTest` 跑到一半**不动了**：零错误输出、没有失败断言、最后超时 |
+| T52 | `AudioDirector.PlayIssenSequence` 若异常 → 一闪"切割声已响、轰鸣永远不来"，**玩家只听到半截音效** |
+
+三次都不是"某张卡的 bug"，而是同一个工程级陷阱 —— 所以它现在和死配置一样，
+属于**代码审查红旗**：看到 `async void` 就该停下来问一句"它的异常谁接？"
+
+```csharp
+// X 禁止：异常不会传播给任何人
+public override async void _Ready() { await SomethingAsync(); Report(); }
+
+// OK 正确：生命周期方法本身仍是 void（Godot 要求），但异常被兜住
+public override void _Ready() => _ = RunAsync();
+
+private async Task RunAsync()
+{
+    try { await SomethingAsync(); Report(); }
+    catch (Exception ex) { GD.PrintErr($"[xx] ✗ 未捕获异常：{ex}"); GetTree().Quit(1); }
+}
+```
+
+**棘轮**：`tools/check_async_void.ps1`（`check.ps1` 第 2c 步）。
+生产代码 `src/` **零容忍（基线 0）**；`src/Dev/` 与 `tests/` 基线 28，
+**只许减少不许新增** —— 每迁移一个测试就把基线减一。
+
+**配套规则**：对已释放的 Godot 节点调 `QueueFree()` 会抛 `ObjectDisposedException`——
+C# 包装对象**释放后仍然非 null**，所以判活必须用 `GodotObject.IsInstanceValid(node)`，
+判 `null` 是无效的（这就是 T49/T50 那 755 次的根因）。

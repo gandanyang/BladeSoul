@@ -17,3 +17,6 @@ Knockback = 1.6
 AdvanceDistance = 1.5
 Parryable = false
 AnimName = "charged_02"
+Whoosh = 2
+WhooshVolumeDb = 0.0
+WhooshPitchScale = 0.90

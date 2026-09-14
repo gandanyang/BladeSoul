@@ -154,6 +154,9 @@ public partial class CombatArbiter : Node
             AttackerId = attacker.ActorId,
             DefenderId = defender.ActorId,
             Verdict = result.Verdict,
+            // T53：把"这一刀是什么性质"一起带给反馈层——特效与音频按它分档
+            // （斩=金属、打=沉闷、突=尖锐、暗=闷响）。没有攻击数据的结算落到斩击档。
+            AttackType = attack?.Type ?? DamageType.Slash,
             AttackId = attack?.Id ?? string.Empty,
             IssenKind = usedIssen,
             Damage = result.Verdict == Verdict.Hit ? result.Damage : 0,
@@ -162,8 +165,10 @@ public partial class CombatArbiter : Node
             Frame = (int)Engine.GetPhysicsFrames(),
             Killed = defender.IsDead,
             // 特效层要"打在哪、顺着哪个方向"（T28）。
-            // 接触点用受击框的位置：它就在胸口高度，正是火花该出现的地方。
-            Position = hurtbox.GlobalPosition,
+            // 接触点取受击体积（CollisionShape3D 子节点）的世界位置——胸口高度。
+            // ⚠️ 不能用 hurtbox.GlobalPosition：Hurtbox 节点本身通常没有 transform，
+            //    位置＝角色根（脚底），火花会贴地（D1，2026-09-15 修）。
+            Position = hurtbox.GlobalContactPoint,
             Direction = toDefender.LengthSquared() > 0.0001f
                 ? toDefender.Normalized()
                 : -defender.GlobalTransform.Basis.Z,

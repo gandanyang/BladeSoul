@@ -21,3 +21,4 @@ IssenVulnerable = true
 Perilous = true
 PerilousKind = 3
 AnimName = "perilous_grab"
+Whoosh = 0

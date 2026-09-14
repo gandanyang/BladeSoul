@@ -25,6 +25,20 @@ public partial class Hud : CanvasLayer
 	public const string PlayerGroup = "player";
 	public const string ActorGroup = "combat_actor";
 
+	/// <summary>
+	/// 处决参数（`data/combat/deathblow.tres`，T52）。
+	///
+	/// 这里挂它是为了让**处决标记的距离上限与处决判定同源**：
+	/// UI 与战斗各写一份 2.2 的话，迟早会出现"标记亮着但按 F 没反应"（或反过来）。
+	///
+	/// 留空时会**自动加载**那个 .tres（见 <see cref="ResolveDeathblowProfile"/>）——
+	/// Hud 是 Autoload，没有 .tscn 可以给它配导出值，所以不能只靠"让策划记得填"。
+	/// </summary>
+	[Export] public Combat.Data.DeathblowProfile? Deathblow { get; set; }
+
+	/// <summary>处决参数资源路径（自动加载用）。</summary>
+	public const string DeathblowProfilePath = "res://data/combat/deathblow.tres";
+
 	[ExportGroup("玩家面板（左下）")]
 	[Export] public Color PlayerHealthColor { get; set; } = new(0.851f, 0.788f, 0.659f);   // #D9C9A8 暖白
 	[Export] public Color PlayerPostureColor { get; set; } = new(0.624f, 0.702f, 0.722f);  // #9FB3B8 浅青灰
@@ -86,6 +100,40 @@ public partial class Hud : CanvasLayer
 	/// <summary>文字提示（「弹开」「一闪」）。**它是脚手架**，手感验证通过后应默认关掉（11 §5.1）。</summary>
 	[Export] public bool ShowTextPrompts { get; set; } = true;
 
+	[ExportGroup("弹开连击（×n）")]
+
+	/// <summary>
+	/// 连击数颜色。**与弹开脉冲同色**——同一件事（你弹开了）只许有一种颜色语言，
+	/// 换色等于让玩家重新学一遍。暖色仍然只属于灯笼（07 §7）。
+	/// </summary>
+	[Export] public Color DeflectChainColor { get; set; } = new(0.749f, 0.890f, 1.0f);   // #BFE3FF
+
+	/// <summary>
+	/// 连击数基准字号。**第一版给的是 34，实机截图发现它比「弹开」提示（26）还不起眼**——
+	/// 而连击是比单次弹开更重要的信息（后者已经有脉冲/音效/光环在三处说同一句话）。
+	/// 提到 40 并加大每连的步进，让"这一串有多长"从字号上就读得出来。
+	/// </summary>
+	[Export] public int DeflectChainFontSize { get; set; } = 40;
+
+	/// <summary>
+	/// 从第几连开始显示。默认 **2**：弹开一下已经有脉冲 + 提示 + 音高了，
+	/// 再挂一个「×1」只是噪音；「×2」才是"我连上了"这件事第一次成立的信号。
+	/// </summary>
+	[Export] public int DeflectChainMinToShow { get; set; } = 2;
+
+	/// <summary>每多一连加大几号字（上限 4 连，见 <see cref="DeflectChainShown"/> 那段的算式）。</summary>
+	[Export] public int DeflectChainFontStep { get; set; } = 4;
+
+	/// <summary>断连后的淡出帧数。**要淡出而不是瞬间消失**——否则玩家看不到"它没了"。</summary>
+	[Export] public int DeflectChainFadeFrames { get; set; } = 36;
+
+	/// <summary>
+	/// 相对屏幕底部居中的位置（与 Prompt 同一条中轴，压在它上面）。
+	/// **不能再低了**：实机截图里 -222 正好压住弹开光环的上沿，
+	/// 「×2」被光环切掉一块——读数被压住等于没有读数。
+	/// </summary>
+	[Export] public Vector2 DeflectChainOffset { get; set; } = new(0f, -256f);
+
 	[ExportGroup("暂存（测试用）")]
 	[Export] public bool Enable { get; set; } = true;
 
@@ -111,6 +159,15 @@ public partial class Hud : CanvasLayer
 
 	/// <summary>半自动防御剩余次数（制作人裁定：资源要可见）。</summary>
 	public int HalfAutoChargesLeft { get; private set; }
+
+	/// <summary>
+	/// 当前屏显的弹开连击数（0 = 不挂）。**自检读这个数，不去读标签文本**——
+	/// 文本是表现，数字才是语义。
+	/// </summary>
+	public int DeflectChainShown { get; private set; }
+
+	/// <summary>连击数是否在屏幕上（含断连后的淡出尾巴）。</summary>
+	public bool DeflectChainVisible { get; private set; }
 
 	public string LastPrompt { get; private set; } = "";
 
@@ -145,6 +202,8 @@ public partial class Hud : CanvasLayer
 	private ICombatActorDebug? _focus;
 	private int _lastHealDots = -1;
 	private Label _halfAutoLabel = null!;
+	private Label _deflectChainLabel = null!;
+	private int _deflectChainFadeLeft;
 
 	/// <summary>见过非零的半自动次数（= 当前难度档有这个机制）。非見習档整行不显示。</summary>
 	private bool _halfAutoSeen;
@@ -171,8 +230,69 @@ public partial class Hud : CanvasLayer
 	public override void _Process(double delta)
 	{
 		UpdatePlayerPanel(delta);
+		UpdateDeflectChain();
 		UpdateFocus();
 		UpdatePulse();
+	}
+
+	// ── 弹开连击（T51 遗留①）───────────────────────────────────
+
+	/// <summary>
+	/// 连着弹开了几次。**这是 M1 那条验收标准（"弹开成功时会想再试一次"）里
+	/// 唯一还没被表达出来的东西**：单次弹开的反馈其实早就齐了（脉冲、提示、音高、
+	/// 火花、架势槽 +18），但"我连上了"没有任何读数——
+	/// 玩家只能靠记，而记不住的进步等于没有进步。
+	///
+	/// 数据来源走**轮询**而不是订阅事件，与血/体干同一条路（见类注释）：
+	/// <see cref="ICombatActorDebug.DeflectChain"/> 就是权威值，它自带保持窗口
+	/// （<c>CombatActor.DeflectChainWindowFrames</c>），所以超时归零会自动反映到屏幕上，
+	/// HUD 不需要自己再数一遍——**每多一处自己数的地方，就多一个会和战斗分家的数**。
+	/// </summary>
+	private void UpdateDeflectChain()
+	{
+		if (!Enable || _player is null)
+		{
+			ApplyDeflectChain(0);
+			return;
+		}
+
+		ApplyDeflectChain(_player.DeflectChain);
+	}
+
+	private void ApplyDeflectChain(int chain)
+	{
+		if (chain < DeflectChainMinToShow)
+			chain = 0;                      // 「×1」不显示：见 DeflectChainMinToShow 的注释
+
+		if (chain != DeflectChainShown)
+		{
+			DeflectChainShown = chain;
+
+			if (chain > 0)
+			{
+				_deflectChainLabel.Text = $"×{chain}";
+
+				// 连得越多越大：字号本身就是"这一串有多长"的读数
+				int step = Mathf.Min(chain - DeflectChainMinToShow, 4);
+				_deflectChainLabel.AddThemeFontSizeOverride("font_size",
+					DeflectChainFontSize + step * DeflectChainFontStep);
+			}
+		}
+
+		if (chain > 0)
+			_deflectChainFadeLeft = DeflectChainFadeFrames;
+		else if (_deflectChainFadeLeft > 0)
+			_deflectChainFadeLeft--;
+
+		DeflectChainVisible = chain > 0 || _deflectChainFadeLeft > 0;
+		_deflectChainLabel.Visible = DeflectChainVisible;
+
+		if (DeflectChainVisible)
+		{
+			Color color = DeflectChainColor;
+			color.A = chain > 0 ? 1f : _deflectChainFadeLeft / (float)Mathf.Max(1, DeflectChainFadeFrames);
+			_deflectChainLabel.AddThemeColorOverride("font_color", color);
+		}
 	}
 
 	// ── 结算反馈（11 §5.1）─────────────────────────────────────
@@ -349,6 +469,13 @@ public partial class Hud : CanvasLayer
 			_focus = null;
 		}
 
+		// `_focus` 是**跨帧缓存**：敌人被打死后 Godot 节点先释放，字段里那个
+		// C# 引用却仍非 null、指针已失效——后面的 `??=` 便永不重查，
+		// 于是每帧抛 ObjectDisposedException（TutorialDirector 那个坑实测刷了 755 次）。
+		// 失效就丢弃，让下面的 `??=` 去重选一个活着的目标。
+		if (_focus is not null && !GodotObject.IsInstanceValid((GodotObject)_focus))
+			_focus = null;
+
 		ICombatActorDebug? target = _focus;
 
 		if (target is null && _focusActorId != 0)
@@ -477,6 +604,28 @@ public partial class Hud : CanvasLayer
 
 	// ── 布局 ───────────────────────────────────────────────────
 
+	/// <summary>
+	/// 拿到处决参数：优先用导出的（策划可在编辑器覆盖），没配就自动加载那个 .tres。
+	///
+	/// 自动加载这一步是必要的，**不是偷懒**：<c>Hud</c> 在 `project.godot` 里是
+	/// **Autoload**（没有 .tscn），所以没有"场景导出值"可填。只靠 `[Export]` 的话，
+	/// 它永远是 null，标记就会退回保守默认值 —— 而这正是"两份距离不一致"的来源。
+	///
+	/// 加载失败也不抛：标记层退化成"什么都不显示"，游戏照常能玩（反馈层不该让游戏崩）。
+	/// </summary>
+	private Combat.Data.DeathblowProfile? ResolveDeathblowProfile()
+	{
+		if (Deathblow is not null)
+			return Deathblow;
+
+		Deathblow = GD.Load<Combat.Data.DeathblowProfile>(DeathblowProfilePath);
+
+		if (Deathblow is null)
+			GD.PushWarning($"Hud: 加载 {DeathblowProfilePath} 失败，处决标记将不显示任何目标");
+
+		return Deathblow;
+	}
+
 	private void BuildUi()
 	{
 		// 未锁定敌人的头顶细条（T31 / 11 §4.2）。**先加**，这样它画在玩家面板、
@@ -484,6 +633,21 @@ public partial class Hud : CanvasLayer
 		EnemyBars bars = new() { Name = "EnemyBars" };
 		AddChild(bars);
 		Bars = bars;
+
+		// 处决标记（T52 / 卡片验收："破韧 → 头顶亮忍杀标记"）。
+		//
+		// 与 EnemyBars 同一手法（纯代码建、不放进 .tscn）：Hud 是 Autoload，
+		// 它的 UI 全部由 BuildUi() 组装，半途插一个场景节点反而会让层级难查。
+		//
+		// **放在 EnemyBars 之后、玩家面板之前**：处决标记是"现在立刻要做的动作"，
+		// 比敌人的血条更紧急，所以画在血条上层；但它仍不该盖住玩家的血/架势槽。
+		DeathblowMarker marker = new()
+		{
+			Name = "DeathblowMarker",
+			Deathblow = ResolveDeathblowProfile(),
+		};
+		AddChild(marker);
+		DeathblowMarkers = marker;
 
 		Vector2 size = PlayerBarSize;
 		float panelWidth = size.X;
@@ -568,6 +732,24 @@ public partial class Hud : CanvasLayer
 		_prompt.OffsetBottom = -118f;
 		AddChild(_prompt);
 
+		// 弹开连击「×n」（T51 遗留①）。与 Prompt 同一条中轴、压在它上面：
+		// 提示说"这一次你弹开了"，连击数说"你连着弹开了几次"——同一位置的两句话，
+		// 才不会让玩家的视线在两处之间跳。
+		_deflectChainLabel = new Label
+		{
+			Name = "DeflectChain",
+			Visible = false,
+			HorizontalAlignment = HorizontalAlignment.Center,
+			MouseFilter = Control.MouseFilterEnum.Ignore,
+		};
+		_deflectChainLabel.AddThemeFontSizeOverride("font_size", DeflectChainFontSize);
+		_deflectChainLabel.AnchorRight = 1f;
+		_deflectChainLabel.AnchorTop = 1f;
+		_deflectChainLabel.AnchorBottom = 1f;
+		_deflectChainLabel.OffsetTop = DeflectChainOffset.Y;
+		_deflectChainLabel.OffsetBottom = DeflectChainOffset.Y + 46f;
+		AddChild(_deflectChainLabel);
+
 		// 伤害数字归 HUD 拥有（它自己也订阅 HitResolved）
 		DamageNumbers numbers = new() { Name = "DamageNumbers" };
 		AddChild(numbers);
@@ -579,6 +761,14 @@ public partial class Hud : CanvasLayer
 
 	/// <summary>未锁定敌人的头顶细条（自检与调试用）。</summary>
 	public EnemyBars Bars { get; private set; } = null!;
+
+	/// <summary>
+	/// 处决标记层（T52，自检与调试用）。
+	///
+	/// 它读的是 <see cref="Combat.ICombatActorDebug.CanBeExecuted"/> ——
+	/// **只读接口，不是具体敌人类型**（docs/00 §2.8）。
+	/// </summary>
+	public DeathblowMarker DeathblowMarkers { get; private set; } = null!;
 
 	/// <summary>建一个 Control 并**入树**（锚点相对父节点）。</summary>
 	private Control MakeControl(string name, float anchorX, float anchorY,

@@ -1,0 +1,21 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/Dev/PlayerMountShot.cs" id="1_mount"]
+[ext_resource type="PackedScene" path="res://scenes/actors/Player.tscn" id="2_player"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_floor"]
+size = Vector3(8, 0.5, 8)
+
+[node name="PlayerMountShot" type="Node3D"]
+script = ExtResource("1_mount")
+PlayerScene = ExtResource("2_player")
+OutputPath = "res://assets/references/_mount_rest.png"
+AttackTotalFrames = 36
+AttackStep = 2
+AttackFrames = "0,9,18,27,36"
+
+[node name="FloorBody" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.25, 0)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="FloorBody"]
+shape = SubResource("BoxShape3D_floor")

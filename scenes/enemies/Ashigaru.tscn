@@ -1,0 +1,52 @@
+[gd_scene load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://src/Enemies/Ashigaru.cs" id="1_ashigaru"]
+[ext_resource type="Resource" path="res://data/actors/enemy_grunt.tres" id="2_stats"]
+[ext_resource type="Resource" path="res://data/attacks/enemies/grunt_slash.tres" id="3_attack"]
+[ext_resource type="Script" path="res://src/Combat/Hitbox.cs" id="4_hitbox"]
+[ext_resource type="Script" path="res://src/Combat/Hurtbox.cs" id="5_hurtbox"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/AshigaruModel.tscn" id="6_model"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
+radius = 0.38
+height = 1.75
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_hurt"]
+radius = 0.48
+height = 1.8
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_hit"]
+size = Vector3(1.4, 1.6, 1.8)
+
+[node name="Ashigaru" type="CharacterBody3D"]
+collision_layer = 4
+collision_mask = 3
+script = ExtResource("1_ashigaru")
+DebugName = "魔骸足兵"
+Stats = ExtResource("2_stats")
+Attack = ExtResource("3_attack")
+AttackIntervalFrames = 70
+AttackRange = 2.4
+PreferredRange = 1.9
+ModelScene = ExtResource("6_model")
+TurnSpeed = 8.0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.875, 0)
+shape = SubResource("CapsuleShape3D_body")
+
+[node name="Hurtbox" type="Area3D" parent="."]
+collision_layer = 16
+collision_mask = 0
+monitoring = false
+script = ExtResource("5_hurtbox")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Hurtbox"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.875, 0)
+shape = SubResource("CapsuleShape3D_hurt")
+
+[node name="Hitbox" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.0, -1.0)
+script = ExtResource("4_hitbox")
+Shape = SubResource("BoxShape3D_hit")
+TargetMask = 8

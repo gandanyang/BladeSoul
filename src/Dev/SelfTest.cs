@@ -28,6 +28,9 @@ public partial class SelfTest : Node
     /// <summary>玩家侧的关卡外参数（T45 掉落保护）。</summary>
     private int _playerData;
 
+	/// <summary>战斗动作参数（T52 处决，`data/combat/`）。</summary>
+	private int _combatData;
+
     /// <summary>遭遇战配置（T42）。</summary>
     private int _encounters;
 
@@ -42,7 +45,7 @@ public partial class SelfTest : Node
         foreach (string error in _errors)
             GD.PrintErr($"[自检] ✗ {error}");
 
-        GD.Print($"[自检] 资源 {_resources} 个（招式 {_attacks} / 难度 {_difficulties} / 角色数据 {_actorData} / 氛围 {_world} / 材质 {_materials} / 玩家 {_playerData}），音效 {_audio} 个，错误 {_errors.Count} 项");
+        GD.Print($"[自检] 资源 {_resources} 个（招式 {_attacks} / 难度 {_difficulties} / 角色数据 {_actorData} / 氛围 {_world} / 材质 {_materials} / 玩家 {_playerData} / 战斗 {_combatData}），音效 {_audio} 个，错误 {_errors.Count} 项");
 
         if (_errors.Count == 0)
             GD.Print("[自检] ✓ 通过");
@@ -198,15 +201,43 @@ public partial class SelfTest : Node
             return;
         }
 
-        // data/player/ 下是玩家侧、与关卡无关的参数（T45 掉落保护）。
-        // 和 /world/ 分开的理由：氛围是**场景**的，掉落阈值是**人**的。
+        // data/player/ 下是玩家侧、与关卡无关的参数（T45 掉落保护、T51 弹开窗指示器）。
+        // 和 /world/ 分开的理由：氛围是**场景**的，掉落阈值和 UI 提示是**人**的。
         if (path.Contains("/player/"))
         {
             _playerData++;
-            if (resource is Oniblade.World.FallRecoveryProfile or Oniblade.Player.JumpProfile)
+            if (resource is Oniblade.World.FallRecoveryProfile
+                or Oniblade.Player.JumpProfile
+                or Oniblade.Player.DeflectCueProfile)
                 return;
 
-            _errors.Add($"{path} 不是 FallRecoveryProfile（实际 {resource.GetType().Name}）");
+            _errors.Add($"{path} 不是 FallRecoveryProfile / JumpProfile / DeflectCueProfile" +
+                        $"（实际 {resource.GetType().Name}）");
+            return;
+        }
+
+        // data/combat/ 下是**战斗动作自身**的帧构成（T52 处决 / T53 弹开反馈）。
+        // 和 data/player/ 分开的理由：player/ 放的是"人的能力"（掉落阈值、跳跃曲线、
+        // 弹开指示器外观），而处决是**一段动作的帧数据**——将来敌人处决、双人处决
+        // 都可能复用同一份，它不属于"玩家"。
+        //
+        // ★ 这里列的是**已知的战斗动作参数类**，不是"只许某一个"。
+        //   T52 初版只放行了 DeathblowProfile，结果 T53 的 DeflectFeedbackSet
+        //   一落盘就把 check.ps1 打红了 —— 那是规则写得太窄，不是 T53 的错。
+        //   现在改成和上面 data/player/ 同一个写法（"或"列举）：
+        //   **同目录可以放多个，但必须是白名单里的具体类型**，
+        //   这样既不会挡住并行的同伴，又仍能拦住"把材质球/关卡配置丢进战斗目录"。
+        if (path.Contains("/combat/"))
+        {
+            _combatData++;
+
+            if (resource is Oniblade.Combat.Data.DeathblowProfile
+                or Oniblade.Combat.Data.DeflectFeedbackSet)
+                return;
+
+            _errors.Add($"{path} 不是 DeathblowProfile / DeflectFeedbackSet" +
+                        $"（实际 {resource.GetType().Name}）" +
+                        "——data/combat/ 下只许放战斗动作参数");
             return;
         }
 

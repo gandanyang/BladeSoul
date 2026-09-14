@@ -273,6 +273,45 @@ function Build-SoulAbsorb {
     return $b
 }
 
+# T53: deflect feedback by damage type. Build-Deflect above is the SLASH ring
+# (inharmonic partials = metal). The other three keep a clang identity but move
+# the spectral weight: blunt sinks low and muddies, thrust goes high and very
+# short, dark drops to a hollow low thud.
+function Build-DeflectBlunt {
+    $b = New-Buffer 0.70
+    $rng = New-Object System.Random 401
+    Add-Noise -Buf $b -Amp 0.62 -Decay 40.0 -Rng $rng -LowPass 0.32 -Attack 0.0008
+    Add-Partial -Buf $b -Freq 196 -Amp 1.00 -Decay 9.0
+    Add-Partial -Buf $b -Freq 337 -Amp 0.55 -Decay 11.0
+    Add-Partial -Buf $b -Freq 704 -Amp 0.30 -Decay 14.0
+    Add-Partial -Buf $b -Freq 1183 -Amp 0.16 -Decay 18.0
+    Limit-Peak $b 0.92
+    return $b
+}
+
+function Build-DeflectThrust {
+    $b = New-Buffer 0.34
+    $rng = New-Object System.Random 402
+    Add-Noise -Buf $b -Amp 0.50 -Decay 190.0 -Rng $rng -LowPass 1.0 -Attack 0.0002
+    Add-Partial -Buf $b -Freq 4180 -Amp 0.90 -Decay 22.0
+    Add-Partial -Buf $b -Freq 6315 -Amp 0.55 -Decay 30.0
+    Add-Partial -Buf $b -Freq 9027 -Amp 0.34 -Decay 42.0
+    Add-Partial -Buf $b -Freq 12154 -Amp 0.20 -Decay 55.0
+    Limit-Peak $b 0.90
+    return $b
+}
+
+function Build-DeflectDark {
+    $b = New-Buffer 0.80
+    $rng = New-Object System.Random 403
+    Add-Noise -Buf $b -Amp 0.45 -Decay 11.0 -Rng $rng -LowPass 0.20 -Attack 0.003
+    Add-Partial -Buf $b -Freq 92 -Amp 1.00 -Decay 5.5
+    Add-Partial -Buf $b -Freq 141 -Amp 0.50 -Decay 7.5
+    Add-Partial -Buf $b -Freq 258 -Amp 0.26 -Decay 10.0
+    Limit-Peak $b 0.90
+    return $b
+}
+
 $sounds = [ordered]@{
     'hit_slash'       = (Build-HitSlash)
     'hit_block'       = (Build-HitBlock)
@@ -289,6 +328,9 @@ $sounds = [ordered]@{
     'perilous_sweep'  = (Build-Perilous -BaseFreq 980  -Seed 202)
     'perilous_grab'   = (Build-Perilous -BaseFreq 620  -Seed 203)
     'soul_absorb'     = (Build-SoulAbsorb)
+    'deflect_blunt'   = (Build-DeflectBlunt)
+    'deflect_thrust'  = (Build-DeflectThrust)
+    'deflect_dark'    = (Build-DeflectDark)
 }
 
 $total = 0

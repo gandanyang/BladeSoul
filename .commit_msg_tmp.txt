@@ -1,0 +1,17 @@
+T27/T33/T38/T48-T53 多卡落盘：枪兵·场景套件·动画覆盖·模型管线·格挡弹开·破韧处决·弹开反馈分档
+
+横跨六张已完成任务卡的成果一次性入库（交接报告 T27/T33/T38/T48-T53-HANDOFF.md 均在仓库根）。
+
+**T27 魔骸枪兵**：完成人物建模全流程（参考图→3D生成→去碎渣降面补法线→上色→入库→同屏验收），并修复已上线的配色缺陷——魔骸顶点色按 sRGB 写入、引擎按线性读，导致"黑+血红"一直显示成"灰+粉红"。资产 ashigaru_v2d_colored.glb / 参考图 t27_*。
+
+**T33 场景模块化套件（P0）**：11 个模块全部程序化生成（tools/gen_kit.py / gen_level_kit.py / gen_props.py），已铺进 Dojo（60 件/13272 面）与 L01_Gifu（117 件/28332 面），布局逐行比对 257→257 / 374→374 零改动。
+
+**T38 动画覆盖补齐**：PlayerGaps 探针体检出的 5 个"没有专属动画"动作（闪避/喝血/跳跃/死亡/体干破裂）全部补上，探针从"打印"升级为"硬断言"——任一动作退回 idle 会让 check.ps1 第 29 步变红。改后 12 动作全部 ≥25°（最低 51.1°）。
+
+**T48-T50 模型管线与 Blender 工具链**：Blender 4.5.13 LTS 免安装版就绪（docs/17、docs/18），rig_humanoid.py 泛化绑骨（玩家/足兵通用）、权重修复链（weight_fix/reskin_nearest/restore_original_weights）、T50 定位到"玩家模型像纸被翻折"真根因——HumanoidAnimator.Rot() 把 SetBonePoseRotation 当"转这么多"，实际是"设成这个值"，而 L_Thigh rest 旋转是 180°。
+
+**T51 格挡与弹开**：弹开机制本身正确（窗口精确等于配置值），玩家弹不开是时序+看不见。窗口 6/9/12/16 → 8/15/17/20 帧，新增弹开窗指示器 deflect_cue（data/player/deflect_cue.tres），指示器三轮动效均被实测否掉后定为静态灯，相邻帧像素差 0.0012%。
+
+**T52 怪物动作 + 破韧处决**：足兵绑骨（skins=1 joints=21）+ 8 个动作全部 >20° 可区分；真敌人 Ashigaru 会追会砍会破韧；处决链路端到端 32/32 通过，6 组对照实验全验完（含"处决期间 87/87 帧无敌"唯一有真对照的一组）。破韧窗口帧数进 data（enemy_grunt.tres=120）。新增处决标记 UI（DeathblowMarker，15 单测），UI 不引用具体战斗类型。抓出并修复 3 个隐蔽 bug：BeginBeingExecuted 从未被调用、async void 吞 ObjectDisposedException、断言采错采样点。
+
+**T53 弹开反馈按伤害类型分档**：HitEvent 加 AttackType，四档查表 DeflectFeedbackSet（Slash/Thrust/Blunt/Dark），新增 3 个程序化合成的音色与 3 个 SparkBurst 参数组。Slash 档故意沿用既有 Deflect 音效，档位 PitchScale 与连击升调相乘而非替换。四档硬断言 + 真链路截图机 DeflectTypeShot。

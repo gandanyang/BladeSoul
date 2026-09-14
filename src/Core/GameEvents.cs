@@ -12,6 +12,19 @@ public readonly struct HitEvent
     public int DefenderId { get; init; }
     public Verdict Verdict { get; init; }
 
+    /// <summary>
+    /// 这次攻击的**伤害性质**（T53）。弹开反馈按它分档：
+    /// 斩=清脆金属 / 打=沉闷冲击 / 突=尖锐短促 / 暗=低频闷响。
+    ///
+    /// 为什么放进事件、而不是让消费者自己去查：与 <see cref="Position"/> 同一个理由——
+    /// **消费者需要什么，事件就带上什么**。特效层与音频层手里只有 id，
+    /// 拿不到攻方的 <c>AttackData</c>；没有这个字段它们就只能瞎猜或者反查场景树。
+    ///
+    /// 默认 <see cref="DamageType.Slash"/>：所有"不是攻击造成的"结算
+    /// （例如自检直接灌事件）都落到斩击档，与 T53 之前的观感完全一致。
+    /// </summary>
+    public DamageType AttackType { get; init; }
+
     /// <summary>攻方招式 Id（调试面板与统计用）。</summary>
     public string AttackId { get; init; }
 

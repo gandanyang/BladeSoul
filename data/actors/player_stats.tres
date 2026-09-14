@@ -14,6 +14,7 @@ MoveSpeed = 4.2
 SprintSpeed = 7.0
 AttackMoveSpeed = 1.6
 GuardMoveScale = 0.4
+GuardCrouchDepth = 0.12
 TurnSpeed = 14.0
 HealCharges = 4
 HealStartupFrames = 10

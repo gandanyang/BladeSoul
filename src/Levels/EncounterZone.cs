@@ -88,7 +88,12 @@ public partial class EncounterZone : Node3D
         if (_enemyScene is null)
             return;
 
-        _player ??= FindPlayer();
+        // 重查条件**不能只判 null**：Godot 节点释放后 C# 包装对象仍非 null、指针失效，
+        // 于是 `??=` 永不重查，下面读 GlobalPosition 会每帧抛 ObjectDisposedException。
+        // 同款坑在 TutorialDirector 实测刷了 755 次（`IsInstanceValid` 才是正确问法）。
+        if (!GodotObject.IsInstanceValid(_player))
+            _player = FindPlayer();
+
         if (_player is null)
             return;
 

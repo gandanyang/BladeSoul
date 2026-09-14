@@ -1,0 +1,63 @@
+[gd_resource type="Resource" script_class="DeflectFeedbackSet" load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://src/Combat/Data/DeflectFeedbackSet.cs" id="1_set"]
+[ext_resource type="Script" path="res://src/Combat/Data/DeflectFeedbackProfile.cs" id="2_profile"]
+
+[sub_resource type="Resource" id="Profile_slash"]
+script = ExtResource("2_profile")
+Id = "Slash"
+Sfx = 2
+PitchScale = 1.0
+VolumeDb = 0.0
+SparkAmount = 14
+SparkSpreadDeg = 40.0
+SparkSpeedScale = 1.0
+SparkScale = 1.0
+SparkColor = Color(0.78, 0.88, 1, 1)
+SparkLifetimeFrames = 8
+
+[sub_resource type="Resource" id="Profile_thrust"]
+script = ExtResource("2_profile")
+Id = "Thrust"
+Sfx = 16
+PitchScale = 1.28
+VolumeDb = -1.0
+SparkAmount = 9
+SparkSpreadDeg = 18.0
+SparkSpeedScale = 1.55
+SparkScale = 0.72
+SparkColor = Color(0.92, 1, 0.86, 1)
+SparkLifetimeFrames = 6
+
+[sub_resource type="Resource" id="Profile_blunt"]
+script = ExtResource("2_profile")
+Id = "Blunt"
+Sfx = 15
+PitchScale = 0.72
+VolumeDb = 2.0
+SparkAmount = 20
+SparkSpreadDeg = 70.0
+SparkSpeedScale = 0.62
+SparkScale = 1.5
+SparkColor = Color(1, 0.82, 0.55, 1)
+SparkLifetimeFrames = 8
+
+[sub_resource type="Resource" id="Profile_dark"]
+script = ExtResource("2_profile")
+Id = "Dark"
+Sfx = 17
+PitchScale = 0.55
+VolumeDb = 0.0
+SparkAmount = 16
+SparkSpreadDeg = 55.0
+SparkSpeedScale = 0.5
+SparkScale = 1.25
+SparkColor = Color(0.58, 0.42, 0.78, 1)
+SparkLifetimeFrames = 8
+
+[resource]
+script = ExtResource("1_set")
+Slash = SubResource("Profile_slash")
+Thrust = SubResource("Profile_thrust")
+Blunt = SubResource("Profile_blunt")
+Dark = SubResource("Profile_dark")

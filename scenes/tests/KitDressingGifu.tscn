@@ -1,0 +1,14 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/Dev/KitDressingShot.cs" id="1_kit"]
+
+[node name="KitDressingGifu" type="Node3D"]
+script = ExtResource("1_kit")
+LevelPath = "res://scenes/levels/L01_Gifu.tscn"
+OutBefore = "res://assets/references/t33_gifu_before.png"
+OutAfter = "res://assets/references/t33_gifu_after.png"
+; 城下町：站在入口段，**沿街看过去**（街宽 4m、两侧板壁 3.2m 高）。
+; 这是玩家进游戏第一眼的角度，也是"读起来像不像城下町"唯一要紧的角度。
+CameraPosition = Vector3(6.0, 2.15, 0.6)
+CameraTarget = Vector3(34.0, 1.35, -0.4)
+CameraFov = 66.0

@@ -37,6 +37,10 @@ public partial class TutorialDirector : Node3D
     [ExportGroup("台词")]
     [Export] public string DialoguePath { get; set; } = "res://data/dialogue/tutorial_act1.json";
 
+    [ExportGroup("收刀")]
+    /// <summary>收刀时镜头停几秒（docs/15：「玩家按键→刀入鞘→镜头停半秒」）。0 ＝ 不停。</summary>
+    [Export] public double SheathePauseSeconds { get; set; } = 0.5;
+
     /// <summary>要用的对话框（在关卡场景里指过来）。留空＝只跑规则不显示，测试就是这么跑的。</summary>
     [Export] public DialogueBox? Box { get; set; }
     [Export] public string MoveHint { get; set; } = "站着不动，剑不会自己走。";
@@ -56,6 +60,9 @@ public partial class TutorialDirector : Node3D
 
     /// <summary>台词表读进来几组（说明那份 JSON 有效）。</summary>
     public int DialogueSetCount { get; private set; }
+
+    /// <summary>玩家做过「收刀」（第三幕会回收这个事实）。</summary>
+    public bool Sheathed { get; private set; }
 
     private readonly TutorialLogic _logic = new();
     private DialogueCatalogue? _lines;
@@ -82,7 +89,20 @@ public partial class TutorialDirector : Node3D
 
     public override void _PhysicsProcess(double delta)
     {
-        _player ??= FindPlayer();
+        // 收刀（docs/15 第二子段「收刀（交互）」）：任何时刻按下 interact 都算，
+        // 第一次会给「镜头停半秒」——这是教玩家「收刀也是一个动作」，第三幕会回收。
+        if (Input.IsActionJustPressed("interact"))
+            NotifySheathe();
+
+        // 重查条件**不能只判 null**。
+        //
+        // Godot 节点被释放后，C# 侧的包装对象**仍然非 null**，只是内部指针失效——
+        // 于是 `??=` 永远不会重查，`_player.GlobalPosition` 每物理帧抛一次
+        // ObjectDisposedException（实测：check.ps1 第 22 步刷 755 次 / 21159 行日志）。
+        // `IsInstanceValid` 才是"这个引擎对象还活着吗"的正确问法。
+        if (!GodotObject.IsInstanceValid(_player))
+            _player = FindPlayer();
+
         if (_player is not PlayerActor actor)
             return;
 
@@ -146,6 +166,27 @@ public partial class TutorialDirector : Node3D
         };
 
         GD.Print($"[教学] 师父的声音（{_logic.Beat}，已失败 {_logic.FailureCount} 次）：{LastHint}");
+    }
+
+    /// <summary>
+    /// 收刀：记录事实 ＋ 「镜头停半秒」（docs/15）。镜头停顿用 <c>Engine.TimeScale = 0</c>，
+    /// 恢复计时走 <c>ignoreTimeScale</c> 的计时器（物理帧在冻结期间不会走）。
+    /// 拆成公共方法是为了端到端测试可以直接触发（不依赖真实按键）。
+    /// </summary>
+    public void NotifySheathe()
+    {
+        if (Sheathed)
+            return;
+
+        Sheathed = true;
+        if (SheathePauseSeconds <= 0)
+            return;
+
+        Engine.TimeScale = 0.0;
+        GD.Print($"[教学] 收刀。镜头停 {SheathePauseSeconds:0.##} 秒。");
+        var timer = GetTree().CreateTimer(SheathePauseSeconds,
+            processAlways: true, processInPhysics: false, ignoreTimeScale: true);
+        timer.Timeout += () => Engine.TimeScale = 1.0;
     }
 
     /// <summary>播一组教学台词——走 <see cref="DialogueBox.ShowExternal"/>，不换盒子自己的常驻台词表。</summary>

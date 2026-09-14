@@ -41,6 +41,15 @@ public partial class AnimProbeTest : Node3D
     /// </summary>
     private static readonly string[] WeaponNames = { "Weapon_R", "Weapon_L", "Scabbard" };
 
+    /// <summary>
+    /// **必须存在**的武器骨（T48 交付物）。
+    ///
+    /// `Weapon_L` 不在里面：卡片明确写着它"留给将来左手持械"，
+    /// 也就是说它**现在本来就不该有**。把它算进"缺失"会让这条自检永远红着，
+    /// 久了一眼就会被无视——那比没有自检更糟。它单独报，不算缺失。
+    /// </summary>
+    private static readonly string[] WeaponRequired = { "Weapon_R", "Scabbard" };
+
     private static IEnumerable<string> AllNames()
     {
         foreach (string n in Names)
@@ -85,17 +94,21 @@ public partial class AnimProbeTest : Node3D
         GD.Print($"[动画体检] 12 个要找的名字里，缺 {missing} 个");
 
         // 武器骨骼（T48）：缺了就是"刀不跟手"，与握刀手摆动多少无关。
-        int weaponsMissing = 0;
-        foreach (string name in WeaponNames)
+        // 只把**必须有的**算成缺失；Weapon_L 是预留位，单独报。
+        var weaponsMissing = new List<string>();
+        foreach (string name in WeaponRequired)
         {
             if (skel.FindBone(name) < 0)
-                weaponsMissing++;
+                weaponsMissing.Add(name);
         }
 
-        GD.Print(weaponsMissing == 0
-            ? "[动画体检] ✓ 武器骨骼齐全（刀/鞘会跟着手与腰走）"
-            : $"[动画体检] ✗ 武器骨骼缺 {weaponsMissing}/{WeaponNames.Length} 根"
-              + $"（{string.Join(" / ", WeaponNames)}）—— **刀不跟手，正是试玩反馈的那一条**");
+        GD.Print(weaponsMissing.Count == 0
+            ? "[动画体检] ✓ 武器骨骼齐全（Weapon_R / Scabbard 都在，刀与鞘会跟着手和腰走）"
+            : $"[动画体检] ✗ 武器骨骼缺 {weaponsMissing.Count}/{WeaponRequired.Length} 根"
+              + $"（{string.Join(" / ", weaponsMissing)}）—— **刀不跟手，正是试玩反馈的那一条**");
+
+        if (skel.FindBone("Weapon_L") < 0)
+            GD.Print("[动画体检] · Weapon_L 未建（卡片说明：留给将来左手持械，不算缺失）");
 
         // 逐骨量：idle 静止 → 挥砍过程中的最大偏转。
         if (visual is null)
@@ -115,16 +128,30 @@ public partial class AnimProbeTest : Node3D
             animator.AnimateCombat(1f / 60f, -1);
         }
 
+        // ★ T48：**武器骨是被动子骨**（Weapon_R 挂在 R_Hand 下、Scabbard 挂在 Hip 下），
+        // 没有任何代码去驱动它们，所以它们的**局部**姿态旋转恒为单位四元数——
+        // 拿局部角度量"刀跟不跟手"，**结构上就恒等于 0°**，量不出东西。
+        // 该量的是**全局姿态**：父骨一转，子骨的全局变换就跟着变。
+        // 所以下面同时留局部与全局两套基准，两张表都打，不做取舍。
+        var idleGlobal = new Dictionary<string, Quaternion>();
+
         foreach (string name in AllNames())
         {
             int bone = skel.FindBone(name);
             if (bone >= 0)
+            {
                 idle[name] = skel.GetBonePoseRotation(bone);
+                idleGlobal[name] = skel.GetBoneGlobalPose(bone).Basis.Orthonormalized().GetRotationQuaternion();
+            }
         }
 
         var peak = new Dictionary<string, float>();
+        var peakGlobal = new Dictionary<string, float>();
         foreach (string name in AllNames())
+        {
             peak[name] = 0f;
+            peakGlobal[name] = 0f;
+        }
 
         animator.PlayAttack(0, 26);      // 轻斩·壹（26 帧）
 
@@ -141,6 +168,13 @@ public partial class AnimProbeTest : Node3D
 
                 float deg = Mathf.RadToDeg(idle[name].AngleTo(skel.GetBonePoseRotation(bone)));
                 peak[name] = Mathf.Max(peak[name], deg);
+
+                if (idleGlobal.TryGetValue(name, out Quaternion g0))
+                {
+                    float degGlobal = Mathf.RadToDeg(g0.AngleTo(
+                        skel.GetBoneGlobalPose(bone).Basis.Orthonormalized().GetRotationQuaternion()));
+                    peakGlobal[name] = Mathf.Max(peakGlobal[name], degGlobal);
+                }
             }
 
             // 一次性诊断：Hip 到底有没有被写进去。
@@ -160,6 +194,30 @@ public partial class AnimProbeTest : Node3D
         GD.Print("[动画体检] 轻斩·壹：每根骨相对静止姿势的最大偏转");
         foreach (string name in AllNames())
             GD.Print($"[动画体检]   {name,-12} {peak[name],7:F1}°");
+
+        // 武器骨单独一张表：局部（恒 0° → 证明它确实是被动骨）＋ 全局（刀到底跟没跟手）。
+        GD.Print("[动画体检] 武器骨（局部 / **全局**）—— T48 验收看**全局**那一列");
+        foreach (string name in WeaponNames)
+        {
+            if (!idle.ContainsKey(name))
+            {
+                GD.Print($"[动画体检]   {name,-12} 骨骼不存在，无法测量");
+                continue;
+            }
+
+            GD.Print($"[动画体检]   {name,-12} 局部 {peak[name],7:F1}°   全局 {peakGlobal[name],7:F1}°");
+        }
+
+        float weaponGlobal = 0f;
+        foreach (string name in WeaponNames)
+        {
+            if (peakGlobal.ContainsKey(name))
+                weaponGlobal = Mathf.Max(weaponGlobal, peakGlobal[name]);
+        }
+
+        GD.Print(weaponGlobal >= 100f
+            ? $"[动画体检] ✓ 武器骨跟着手抡（全局最大偏转 {weaponGlobal:F1}° ≥ 100°）"
+            : $"[动画体检] ✗ 武器骨几乎不动（全局最大偏转 {weaponGlobal:F1}° < 100°）—— 刀跟不动");
 
         // ── 走路：腿到底动没动（"模型移动问题"通常就是这里）────────────
         // 挥手挥得再大，只要腿不动，人就是"飘"过去的——这就是滑步。

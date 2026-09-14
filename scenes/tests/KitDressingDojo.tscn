@@ -1,0 +1,14 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/Dev/KitDressingShot.cs" id="1_kit"]
+
+[node name="KitDressingDojo" type="Node3D"]
+script = ExtResource("1_kit")
+LevelPath = "res://scenes/levels/Dojo.tscn"
+OutBefore = "res://assets/references/t33_dojo_before.png"
+OutAfter = "res://assets/references/t33_dojo_after.png"
+; 道场室内：站在南门内一侧、斜看战斗区与北墙。
+; 机位刻意选在**四根柱子的人眼高度**上——那里才能同时读到地板、墙、柱、灯笼。
+CameraPosition = Vector3(-5.6, 3.1, 5.6)
+CameraTarget = Vector3(1.2, 1.5, -5.2)
+CameraFov = 70.0

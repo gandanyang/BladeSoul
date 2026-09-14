@@ -102,6 +102,19 @@ public partial class TutorialTest : Node3D
         await WaitFrames(70);              // 再卡很久
         Check(idle.HintRequests == 1, $"同一段**只给一次**（实际 {idle.HintRequests} 次）");
 
+        // ── 收刀（docs/15 第二子段「收刀（交互）」）──────────────
+        // 按 interact → 记录事实 ＋ 镜头停半秒（TimeScale=0，恢复计时不受冻结影响）。
+        _tutorial.SheathePauseSeconds = 0.1;   // 测试里把停顿缩短，别拖慢验收
+        _tutorial.NotifySheathe();
+        Check(_tutorial.Sheathed, "按 interact → 收刀被记录");
+        Check(Engine.TimeScale == 0.0, "收刀瞬间镜头停（TimeScale = 0）");
+
+        // 冻结期间物理帧不走，等恢复必须用不受 TimeScale 影响的计时器
+        await ToSignal(GetTree().CreateTimer(0.4, processAlways: true,
+            processInPhysics: false, ignoreTimeScale: true), SceneTreeTimer.SignalName.Timeout);
+        Check(Engine.TimeScale == 1.0, "停顿结束后镜头恢复（TimeScale = 1）");
+        Check(_tutorial.Sheathed, "重复判定：收刀只记第一次");
+
         GD.Print("");
         GD.Print(_failures.Count == 0 ? "[教学] ✓ 全部通过" : $"[教学] ✗ {_failures.Count} 条没过：");
         foreach (string f in _failures)

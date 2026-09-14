@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ActorStats" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/Combat/Data/ActorStats.cs" id="1_stats"]
+
+[resource]
+script = ExtResource("1_stats")
+Id = "enemy_grunt"
+DisplayName = "魔骸足兵"
+MaxHealth = 80
+MaxPosture = 60
+PostureRegenPerSecond = 12.0
+PostureRegenDelayFrames = 60
+PostureBrokenFrames = 120
+MoveSpeed = 3.2
+SprintSpeed = 5.0
+AttackMoveSpeed = 1.0
+GuardMoveScale = 1.0
+TurnSpeed = 8.0
+Tier = 0

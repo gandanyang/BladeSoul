@@ -1,0 +1,17 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/Dev/ModelShowcase.cs" id="1_ms"]
+
+[node name="ModelShowcaseSpear" type="Node3D"]
+script = ExtResource("1_ms")
+PlayerModelPath = ""
+EnemyModelPath = "res://assets/models/yari_v1_colored.glb"
+EnemyTargetHeight = 1.7
+ThirdModelPath = "res://assets/models/yari_spear_v1_colored.glb"
+ThirdLabel = "枪"
+ThirdTargetHeight = 2.2
+OutputPath = "res://assets/references/t27_yari_spear.png"
+Spacing = 1.1
+CameraDistance = 3.2
+CameraHeight = 1.5
+LookAtHeight = 1.05

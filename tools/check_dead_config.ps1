@@ -12,6 +12,37 @@
 # 用法：powershell -NoProfile -File tools\check_dead_config.ps1
 
 $ErrorActionPreference = 'Stop'
+
+# ★ 先把控制台输出编码设成 UTF-8，否则下面 rg 的输出会被 PS 5.1 按 ANSI 解码。
+#   rg 吐的是 UTF-8，而一行只要**以中文结尾**（例如 `... // #C8323A 血红`），
+#   误读会把这一行末尾的**换行一起吃掉**，下一行被并进来 ——
+#   于是"真正的引用那一行"看不见，字段被误判成零引用。
+#   实测：两个字段的声明行恰好都以中文注释结尾，所以只有它们两个误报。
+[Console]::OutputEncoding = [Text.Encoding]::UTF8
+$OutputEncoding = [Text.Encoding]::UTF8
+
+# ★ rg（ripgrep）在**某些 agent 宿主里不在 PATH 上**（实测：DSH 的 pwsh 会话没有），
+#   于是这一步直接 CommandNotFoundException → 整个 check.ps1 在第 2b 步挂掉。
+#   这不是代码问题，是环境问题；所以这里自己找一遍，找不到再报错。
+$rg = (Get-Command rg -ErrorAction SilentlyContinue | Select-Object -First 1).Source
+if (-not $rg) {
+    $cand = @(
+        (Join-Path $env:USERPROFILE 'scoop\shims\rg.exe'),
+        (Join-Path $env:LOCALAPPDATA 'Microsoft\WinGet\Links\rg.exe')
+    )
+    if ($env:DSH_RG_PATH) { $cand = @($env:DSH_RG_PATH) + $cand }
+    foreach ($c in $cand) { if ($c -and (Test-Path $c)) { $rg = $c; break } }
+}
+if (-not $rg) {
+    $c = Get-ChildItem -Path (Join-Path $env:APPDATA 'TRAE SOLO CN') -Recurse -Filter 'rg.exe' -ErrorAction SilentlyContinue |
+        Select-Object -First 1
+    if ($c) { $rg = $c.FullName }
+}
+if (-not $rg) {
+    Write-Host '[死配置] X 找不到 ripgrep（rg），无法扫描 —— 请把 rg 放进 PATH（或设 $env:DSH_RG_PATH）' -ForegroundColor Red
+    exit 1
+}
+
 $root = Split-Path -Parent $PSScriptRoot
 $baselinePath = Join-Path $PSScriptRoot 'dead_config_baseline.txt'
 $srcPath = Join-Path $root 'src'
@@ -33,10 +64,12 @@ foreach ($file in Get-ChildItem $srcPath -Recurse -File -Filter '*.cs') {
 
     foreach ($name in $names) {
         $total++
-        $lines = rg --no-heading -n "\b$name\b" $srcPath 2>$null
+        $lines = & $rg --no-heading -n "\b$name\b" $srcPath 2>$null
         $code = @($lines | Where-Object {
-            $parts = $_ -split ':', 3
-            $parts.Count -ge 3 -and ($parts[2] -notmatch '^\s*(//|///|\*)')
+            # 用正则剥掉 `路径:行号:` 前缀，别用 -split ':'：
+            # 盘符那个冒号会让结果随 rg 打印绝对/相对路径而变（CWD 相关）。
+            $body = $_ -replace '^.*?:\d+:', ''
+            ($body -ne $_) -and ($body -notmatch '^\s*(//|///|\*)')
         })
         $uses = @($code | Where-Object {
             $_ -notmatch '\[Export' -and $_ -notmatch ('public\s+[\w<>\[\]\.\?]+\s+' + $name)

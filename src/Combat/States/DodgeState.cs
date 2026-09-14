@@ -1,4 +1,5 @@
 using Godot;
+using Oniblade.Audio;
 using Oniblade.Combat.Data;
 
 namespace Oniblade.Combat.States;
@@ -29,6 +30,15 @@ public sealed class DodgeState : ActorState
 	/// 这类常量留在状态类里，没有跟着 <c>DodgeIFrames</c> 一起进 DifficultyProfile。
 	/// </summary>
 	public const int PerfectDodgeIssenFrames = 14;
+
+	/// <summary>闪避破风声音量（dB）。</summary>
+	public const float DodgeWhooshVolumeDb = -3f;
+
+	/// <summary>
+	/// 闪避破风声音高。比原始略高——垫步是**轻快**的动作，
+	/// 和"沉重的跳劈"用同一个音高会读成"这一下很重"，与动作不符。
+	/// </summary>
+	public const float DodgeWhooshPitchScale = 1.12f;
 
 	private readonly DodgeWindow _window = new();
 
@@ -70,6 +80,16 @@ public sealed class DodgeState : ActorState
 		_speed = Speed;
 		_window.Begin(InvulnerableFrames, RecoveryFrames);
 		PerfectDodgeGranted = false;
+
+		// 闪避的破风声。放在 Enter 而不是"无敌帧结束"——
+		// 玩家按下闪避的那一帧就该听到"我动了"，声音晚一帧就是输入被吞的感觉。
+		//
+		// 走 3D 位置音：闪避是有方向的位移，声音跟着角色走才有"我往哪边扑出去了"。
+		AudioDirector.Instance?.PlayCombatAt(
+			CombatSfx.DodgeWhoosh,
+			Actor.GlobalPosition,
+			DodgeWhooshPitchScale,
+			DodgeWhooshVolumeDb);
 
 		// 用掉就复位（理由同 GuardState）：下次忘了写参数时宁可退化成"原地闪"，
 		// 也不要沿用上一次的方向和速度——那会变成"角色自己乱跑"。

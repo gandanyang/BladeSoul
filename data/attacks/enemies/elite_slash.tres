@@ -16,3 +16,6 @@ PostureDamage = 26
 Knockback = 0.8
 AdvanceDistance = 1.2
 AnimName = "slash"
+Whoosh = 2
+WhooshVolumeDb = -3.0
+WhooshPitchScale = 0.92

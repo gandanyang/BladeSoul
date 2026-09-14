@@ -16,3 +16,6 @@ PostureDamage = 8
 Knockback = 0.35
 AdvanceDistance = 0.35
 AnimName = "light_01"
+Whoosh = 1
+WhooshVolumeDb = -4.0
+WhooshPitchScale = 1.0

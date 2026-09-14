@@ -36,10 +36,21 @@ public partial class AttackingDummy : CombatActor
 	[Export] public Color BodyColor { get; set; } = new(0.38f, 0.22f, 0.2f);
 	[Export] public Color AccentColor { get; set; } = new(0.2f, 0.14f, 0.12f);
 
+	/// <summary>
+	/// 用真模型（T52：魔骸足兵）代替灰盒。**留空则自动降级到 <see cref="BlockoutRig"/>**——
+	/// 这样 T7 的训练测试场景一行都不用改，也不会因为模型资产缺失而崩。
+	/// </summary>
+	[Export] public PackedScene? ModelScene { get; set; }
+
 	private readonly List<int> _attackFrames = new(32);
-	private BlockoutRig _rig = null!;
+	private BlockoutRig? _rig;
+	private AshigaruAnimator? _modelAnim;
 	private Node3D? _target;
 	private int _cooldownFrames;
+	private float _hitStrength = 1f;
+
+	/// <summary>受击强度的记忆还剩几帧（见 <see cref="DriveModel"/>）。</summary>
+	private int _hitStrengthFrameLeft;
 
 	/// <summary>每次出招的物理帧号（按发动顺序）。无头训练测试靠它证明"它真的在按节奏出招"。</summary>
 	public IReadOnlyList<int> AttackFrames => _attackFrames;
@@ -51,9 +62,31 @@ public partial class AttackingDummy : CombatActor
 
 	protected override void OnActorReady()
 	{
-		_rig = new BlockoutRig();
-		_rig.Build(BodyColor, AccentColor, true);
-		AddChild(_rig);
+		if (ModelScene is not null)
+		{
+			// 真模型路径：灰盒完全不建。骨架由 tools/rig_humanoid.py 绑好，
+			// 动画由 AshigaruAnimator 程序化驱动（姿势按足兵自己的 rest 写）。
+			Node model = ModelScene.Instantiate();
+			AddChild(model);
+
+			if (model is Node3D node3D)
+			{
+				_modelAnim = new AshigaruAnimator(node3D);
+				if (!_modelAnim.Valid)
+				{
+					GD.PushWarning($"{Name}: 模型骨架不可用（缺 Skeleton3D 或骨名对不上），" +
+								   "动画不会动——先跑 res://scenes/tests/AshigaruRig.tscn 确认");
+					_modelAnim = null;
+				}
+			}
+		}
+
+		if (_modelAnim is null)
+		{
+			_rig = new BlockoutRig();
+			_rig.Build(BodyColor, AccentColor, true);
+			AddChild(_rig);
+		}
 
 		PrimaryHitbox = GetNodeOrNull<Hitbox>("Hitbox");
 
@@ -74,7 +107,7 @@ public partial class AttackingDummy : CombatActor
 		base.OnAttackStarted(data);
 
 		_attackFrames.Add((int)Engine.GetPhysicsFrames());
-		_rig.PlayAttack(data.TotalFrames);
+		_rig?.PlayAttack(data.TotalFrames);
 	}
 
 	/// <summary>攻击结束才起算冷却，这样"间隔"说的是两次**发动**之间的间隔。</summary>
@@ -101,16 +134,72 @@ public partial class AttackingDummy : CombatActor
 		FaceTarget(dt);
 
 		// 站桩：不做走路动画，免得看起来像要追人。
-		_rig.AnimateLocomotion(0f, dt);
-		_rig.AnimateCombat(dt);
+		if (_modelAnim is not null)
+		{
+			DriveModel(dt);
+			return;
+		}
+
+		_rig?.AnimateLocomotion(0f, dt);
+		_rig?.AnimateCombat(dt);
 	}
 
-	protected override void OnDamaged(int damage) => _rig.PlayHitReact(1f, HitStunFrames);
+	/// <summary>
+	/// 从**状态机当前状态**推动作与帧号喂给模型动画器。
+	///
+	/// 这里刻意不去跟踪"动作开始的那一帧"：姿态全部是**状态自己帧号的纯函数**，
+	/// 直接用 `Machine.Current` 就够了，也不会出现"逻辑换了状态、动画还停在旧动作"的错位。
+	/// 帧号与总帧数全部来自状态（真实帧数据在 `data/attacks/enemies/*.tres`），
+	/// 这里一个数字都不写死。
+	/// </summary>
+	private void DriveModel(float dt)
+	{
+		// 受击强度的记忆有时限：超过一次的硬直长度就当没发生过，
+		// 否则"最后一刀永远决定受击幅度"（重击过一次之后全部按重击播）。
+		if (_hitStrengthFrameLeft > 0)
+			_hitStrengthFrameLeft--;
+		else
+			_hitStrength = 1f;
+
+		float speed01 = 0f;   // 假人站桩
+
+		if (IsDead)
+		{
+			_modelAnim!.Animate(dt, speed01, AshigaruAction.Death, 0, 0);
+			return;
+		}
+
+		if (Machine.Current is AttackState atk && atk.TotalFrames > 0)
+		{
+			_modelAnim!.Animate(dt, speed01, AshigaruAction.Attack, atk.Frame, atk.TotalFrames);
+			return;
+		}
+
+		if (Machine.Current is StaggerState stg && stg.TotalFrames > 0)
+		{
+			AshigaruAction kind = _hitStrength >= 0.8f ? AshigaruAction.HitHeavy : AshigaruAction.HitLight;
+			_modelAnim!.Animate(dt, speed01, kind, stg.Frame, stg.TotalFrames);
+			return;
+		}
+
+		_modelAnim!.AnimateCombat(dt, speed01, -1, 0, -1, 0, 1f, -1, 0, -1, 0, -1, 0, -1, 0);
+	}
+
+	protected override void OnDamaged(int damage)
+	{
+		_hitStrength = 1f;
+		_hitStrengthFrameLeft = HitStunFrames;
+		_rig?.PlayHitReact(1f, HitStunFrames);
+	}
 
 	protected override void OnVerdictReceived(in ResolveResult result)
 	{
 		if (result.Verdict is Combat.Verdict.Block or Combat.Verdict.Deflect or Combat.Verdict.Clash)
-			_rig.PlayHitReact(0.5f, HitStunFrames);
+		{
+			_hitStrength = 0.5f;
+			_hitStrengthFrameLeft = HitStunFrames;
+			_rig?.PlayHitReact(0.5f, HitStunFrames);
+		}
 	}
 
 	/// <summary>体干破裂后立刻回满：它是节拍器，被连段打乱节奏就没法练了。</summary>

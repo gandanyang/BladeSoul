@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Godot;
+using Oniblade.Audio;
 using Oniblade.Combat;
 using Oniblade.Combat.Data;
 using Oniblade.Core;
@@ -20,7 +21,9 @@ namespace Oniblade.Dev;
 ///    截图只能看出"看起来挺短"，这里数的是帧；
 /// 3. 一闪的全屏闪在 6 帧（0.1s）内消失；
 /// 4. **特效层不碰战斗逻辑**：灌一个 Damage=999 的 Hit 事件，场上不许掉血；
-/// 5. 降级顺序是"先砍雾、再砍粒子"，全屏闪不参与降级。
+/// 5. 降级顺序是"先砍雾、再砍粒子"，全屏闪不参与降级；
+/// 6. **T53**：弹开反馈按**攻击性质**分档（斩/打/突/暗），四档映射正确、方向正确、
+///    且在场上的火花**两两可区分**。
 ///
 /// 退出码 0 = 全过，1 = 有错。
 /// </summary>
@@ -64,6 +67,7 @@ public partial class CombatVfxTest : Node3D
         try
         {
             await CheckDeflectSpark();
+            await CheckDeflectByDamageType();
             await CheckClashSpark();
             await CheckBloodMist();
             await CheckIssenFlash();
@@ -103,6 +107,100 @@ public partial class CombatVfxTest : Node3D
             $"弹开火花 {SparkBurst.DeflectLifetimeFrames + 1} 帧后仍在场景里：它盖住了判定");
 
         GD.Print($"[特效] 弹开火花：{spark?.LifetimeFrames ?? -1} 帧内消失（要求 ≤{SparkBurst.DeflectLifetimeFrames}）");
+    }
+
+    // ── T53：弹开按攻击性质分档 ─────────────────────────────────
+
+    /// <summary>
+    /// T53：弹开反馈按**攻击性质**分档（斩/打/突/暗）。要证三件事：
+    /// ① 档位→音效的映射**没错位**（`.tres` 里 enum 是整数，往中间插值就会静默错档）；
+    /// ② "更尖锐 / 更沉闷"这类话**落成了数**，不是形容词；
+    /// ③ 四档在场上生成的火花**两两可区分**（四项全同 ＝ 玩家根本分不出来）。
+    /// </summary>
+    private async System.Threading.Tasks.Task CheckDeflectByDamageType()
+    {
+        DeflectFeedbackSet? set = DeflectFeedbackSet.Load();
+
+        if (set is null)
+        {
+            Check(false, $"没有加载到 {DeflectFeedbackSet.DefaultPath}：四档全都没生效");
+            return;
+        }
+
+        // ① 映射钉死。这一条比"能加载"强得多：整数错档是静默的，只有显式比对才抓得住。
+        Check(set.Slash?.Sfx == CombatSfx.Deflect, "Slash 档音效不是 Deflect（.tres 整数值可能错位）");
+        Check(set.Thrust?.Sfx == CombatSfx.DeflectThrust, "Thrust 档音效不是 DeflectThrust");
+        Check(set.Blunt?.Sfx == CombatSfx.DeflectBlunt, "Blunt 档音效不是 DeflectBlunt");
+        Check(set.Dark?.Sfx == CombatSfx.DeflectDark, "Dark 档音效不是 DeflectDark");
+
+        if (set.Slash is null || set.Thrust is null || set.Blunt is null || set.Dark is null)
+        {
+            Check(false, "四档里有空档");
+            return;
+        }
+
+        // ② 方向断言：把设计意图落成数。
+        Check(set.Thrust.PitchScale > set.Slash.PitchScale,
+            $"突刺档音高 {set.Thrust.PitchScale} 未高于斩击档 {set.Slash.PitchScale}：\"更尖锐\"没落地");
+        Check(set.Blunt.PitchScale < set.Slash.PitchScale,
+            $"打击档音高 {set.Blunt.PitchScale} 未低于斩击档 {set.Slash.PitchScale}：\"更沉闷\"没落地");
+
+        var seen = new List<(DamageType Type, CombatSfx Sfx, Color Color, int Amount, int Lifetime)>();
+
+        foreach (DamageType type in new[] { DamageType.Slash, DamageType.Thrust, DamageType.Blunt, DamageType.Dark })
+        {
+            await WaitPhysicsFrames(SparkBurst.DeflectLifetimeFrames + 2); // 清场
+
+            int before = _director.DeflectSparkCount;
+            Raise(Verdict.Deflect, attackType: type);
+
+            Check(_director.DeflectSparkCount == before + 1, $"{type} 的弹开没有生成火花");
+
+            SparkBurst? spark = FirstLive<SparkBurst>();
+            if (spark is null)
+            {
+                Check(false, $"{type} 的弹开火花不在场景里");
+                continue;
+            }
+
+            Check(!spark.IsClash, $"{type} 的弹开火花被当成了拼刀火花");
+            Check(spark.Profile is not null, $"{type} 的弹开火花没带档位：说明走了降级路径（数据没生效）");
+            Check(spark.LifetimeFrames <= SparkBurst.DeflectLifetimeFrames,
+                $"{type} 火花寿命 {spark.LifetimeFrames} 帧超过 {SparkBurst.DeflectLifetimeFrames} 帧上限（会盖住判定）");
+
+            // 读**场上真实节点**的参数，不是读配置——配置对不等于生效。
+            GpuParticles3D? particles = spark.GetNodeOrNull<GpuParticles3D>("Particles");
+            Check(particles is not null, $"{type} 的火花里没有粒子节点");
+
+            Color color = (particles?.ProcessMaterial as ParticleProcessMaterial)?.Color ?? Colors.Transparent;
+            int amount = particles?.Amount ?? -1;
+
+            seen.Add((type, spark.Profile?.Sfx ?? CombatSfx.Deflect, color, amount, spark.LifetimeFrames));
+        }
+
+        // ③ 两两可区分：音效 / 颜色 / 数量 / 寿命 四项全同 ＝ 玩家分不出来。
+        for (int i = 0; i < seen.Count; i++)
+        {
+            for (int j = i + 1; j < seen.Count; j++)
+            {
+                (DamageType ta, CombatSfx sa, Color ca, int aa, int la) = seen[i];
+                (DamageType tb, CombatSfx sb, Color cb, int ab, int lb) = seen[j];
+
+                bool distinct = sa != sb || ca != cb || aa != ab || la != lb;
+                Check(distinct, $"{ta} 与 {tb} 的弹开反馈（音效/颜色/数量/寿命）四项全同：玩家分不出来");
+            }
+        }
+
+        Check(seen.Count == 4, $"四档只跑出 {seen.Count} 档，应有 4 档");
+
+        foreach ((DamageType type, CombatSfx sfx, Color color, int amount, int lifetime) in seen)
+            GD.Print($"[特效] 弹开·{type}：{sfx} / {color.ToHtml(false)} / {amount} 粒 / {lifetime} 帧");
+
+        GD.Print($"[特效] 弹开分档：四档映射正确、方向正确、两两可区分（数据 {DeflectFeedbackSet.DefaultPath}）");
+
+        // 清场：最后一档的火花还没死，会把下一个检查带歪——
+        // CheckClashSpark 取 FirstLive 会先拿到这簇弹开火花，IsClash 断言必然失败。
+        await WaitPhysicsFrames(SparkBurst.DeflectLifetimeFrames + 2);
     }
 
     private async System.Threading.Tasks.Task CheckClashSpark()
@@ -215,13 +313,14 @@ public partial class CombatVfxTest : Node3D
 
     // ── 工具 ───────────────────────────────────────────────────
 
-    private static void Raise(Verdict verdict, int damage = 0)
+    private static void Raise(Verdict verdict, int damage = 0, DamageType attackType = DamageType.Slash)
     {
         EventBus.Instance?.RaiseHitResolved(new HitEvent
         {
             AttackerId = 1,
             DefenderId = 2,
             Verdict = verdict,
+            AttackType = attackType,
             AttackId = "vfx_test",
             IssenKind = IssenKind.None,
             Damage = damage,
@@ -291,7 +390,7 @@ public partial class CombatVfxTest : Node3D
             GD.PrintErr($"[特效] ✗ {failure}");
 
         if (_failures.Count == 0)
-            GD.Print("[特效] ✓ 四种特效、寿命上限、战斗边界、降级顺序全部通过");
+            GD.Print("[特效] ✓ 四种特效、寿命上限、战斗边界、降级顺序、弹开按攻击性质分档 全部通过");
 
         GetTree().Quit(_failures.Count == 0 ? 0 : 1);
     }
