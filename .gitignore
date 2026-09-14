@@ -22,3 +22,9 @@ obj/
 Thumbs.db
 *.tmp
 *.swp
+
+# AI 工具产物（不进仓库）
+.dsh-vision-router/
+.workbuddy/
+__pycache__/
+*.pyc

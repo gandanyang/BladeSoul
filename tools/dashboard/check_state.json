@@ -1,0 +1,10 @@
+{
+  "green": false,
+  "note": "2026-09-15 实测：编译 ✅ / 239 单测 ✅ / 死配置棘轮 ✅ / async void 棘轮 ✗（Dev 区 29 处 > 基线 28，多了一处）",
+  "steps": [
+    { "name": "1/37 编译", "ok": true, "text": "0 警告 0 错误" },
+    { "name": "2/37 单测", "ok": true, "text": "239 通过 0 失败" },
+    { "name": "2b 死配置棘轮", "ok": true, "text": "479 个 [Export] 零引用 22 个 = 基线 22" },
+    { "name": "2c async void 棘轮", "ok": false, "text": "Dev 区 29 处 > 基线 28（新文件多了一处，见右侧待办）" }
+  ]
+}
