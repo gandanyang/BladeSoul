@@ -178,6 +178,7 @@ public abstract partial class CombatActor : CharacterBody3D, ICombatActorDebug, 
 		if (IsDead)
 		{
 			Velocity = Vector3.Zero;
+			TickDeathVisual(dt);   // D3：尸体也要把倒地演出播完，不能就此冻结
 			return;
 		}
 
@@ -214,6 +215,13 @@ public abstract partial class CombatActor : CharacterBody3D, ICombatActorDebug, 
 	protected virtual void OnActorReady() { }
 	protected virtual void PollLocalInput() { }
 	protected virtual void OnTickVisual(float dt, float speed01) { }
+
+	/// <summary>
+	/// 死亡后的视觉演出钩子（D3，2026-09-15）。基类空实现——没有演出的角色死后就地冻结，行为不变。
+	/// **不复用 <see cref="OnTickVisual"/>**：那里有冷却递减、转朝向等活人才该有的副作用，
+	/// 让死人走它会一边倒地一边转圈。子类在这里播自己的倒地，帧号自己累积。
+	/// </summary>
+	protected virtual void TickDeathVisual(float dt) { }
 	/// <summary>由 <see cref="States.AttackState"/> 调用；子类用它驱动动画。</summary>
 	public virtual void OnAttackStarted(AttackData data)
 	{

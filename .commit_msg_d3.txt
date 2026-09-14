@@ -1,0 +1,24 @@
+D3 死亡演出接线：敌人死后不再冻结，倒地演出播完停尸（60 帧临时默认值，数据可调）
+
+承接 FEEDBACK-DIAGNOSIS.md 的 ③：D1/D2 已修，D3（敌人被打死后姿态冻结）制作人拍板
+「继续」后接线完成。
+
+根因：CombatActor._PhysicsProcess 的 IsDead 分支裸 return，尸体连倒地演出都不播；
+Ashigaru.DriveModel 里有一段永远走不到的死亡分支，还写死帧号 0,0——就是它让尸体
+僵在原地的。
+
+修法（不改任何现有接口，只加钩子）：
+- CombatActor._PhysicsProcess：IsDead 分支不再裸 return，改调新虚钩子
+  TickDeathVisual(dt)（基类空实现 = 没有演出的角色行为不变）。
+  **不复用 OnTickVisual**：那里有冷却递减、转朝向等活人才该有的副作用，
+  让死人走它会一边倒地一边转圈。
+- Ashigaru 覆写 TickDeathVisual：帧号自己累积（_deathFrame），播 AshigaruAction.Death；
+  播完 t 停在 1，尸体停在最终倒地姿势。灰盒降级（无模型）直接返回，行为与旧一致。
+- 总帧数落数据：ActorStats.DeathPerformanceFrames（与 PostureBrokenFrames 同一模式），
+  data/actors/enemy_grunt.tres 显式写 60。**60 是临时默认值，制作人还没拍最终数**——
+  姿势曲线倒地占前 75% ⇒ 45 帧倒完、60 帧完全静止，要调就改数据，不在 C# 里写死。
+
+验证（探针现跑）：Die() 后 40 帧姿态差 **60.88°**（修前 0.00°；对照组满幅 61.0°），
+带窗截图确认尸体倒地。三张 t52 死亡截图按新链路重拍（62021→49224/53902/54346 字节）。
+
+Docs/TASKS.md：D1~D3 全部标已修；FEEDBACK-DIAGNOSIS.md 状态更新。

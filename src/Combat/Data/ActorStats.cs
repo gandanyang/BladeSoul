@@ -74,6 +74,14 @@ public partial class ActorStats : Resource
     /// </summary>
     [Export] public int DeathRestartDelayFrames { get; set; } = 60;
 
+    [ExportGroup("死亡")]
+    /// <summary>
+    /// 敌人死亡演出的总帧数（D3，2026-09-15）。姿势曲线（<c>AshigaruAnimator.ApplyDeath</c>）
+    /// 倒地占前 75%、余量收尾——60 帧即倒地 45 帧完成、60 帧完全静止。
+    /// ⚠️ **60 是临时默认值，制作人还没拍最终数**：要调就改这里（或对应 .tres），不在 C# 里写死。
+    /// </summary>
+    [Export] public int DeathPerformanceFrames { get; set; } = 60;
+
     [ExportGroup("复活")]
     /// <summary>起身演出的帧数（T22 / 卡片：约 1.5 秒）。</summary>
     [Export] public int RevivePerformanceFrames { get; set; } = 90;

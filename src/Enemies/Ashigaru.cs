@@ -50,6 +50,13 @@ public partial class Ashigaru : CombatActor, IDeathblowTarget
 	/// </summary>
 	public int PostureBrokenFrames => Stats?.PostureBrokenFrames ?? 120;
 
+	/// <summary>
+	/// 死亡演出总帧数（D3）。**来自数据**（<c>ActorStats.DeathPerformanceFrames</c>，
+	/// 默认 60 = 临时值，制作人还没拍最终数）——与 <see cref="PostureBrokenFrames"/> 同一写法（铁律 1）。
+	/// 姿势曲线里倒地占前 75%：60 帧 = 倒地 45 帧完成、60 帧完全静止。
+	/// </summary>
+	public int DeathPerformanceFrames => Stats?.DeathPerformanceFrames ?? 60;
+
 	/// <summary>模型场景（`scenes/enemies/AshigaruModel.tscn`）。留空则降级到灰盒。</summary>
 	[Export] public PackedScene? ModelScene { get; set; }
 
@@ -63,6 +70,7 @@ public partial class Ashigaru : CombatActor, IDeathblowTarget
 	private float _hitStrength = 1f;
 	private int _hitStrengthFrameLeft;
 	private int _brokenEnterCount;
+	private int _deathFrame;   // D3：死亡演出已播到的帧号（TickDeathVisual 里累积）
 
 	/// <summary>进入过几次破韧（探针用它证明"体干打满真的会进破韧态"）。</summary>
 	public int BrokenEnterCount => _brokenEnterCount;
@@ -228,8 +236,24 @@ public partial class Ashigaru : CombatActor, IDeathblowTarget
 		_brokenEnterCount = 0;
 		_hitStrength = 1f;
 		_hitStrengthFrameLeft = 0;
+		_deathFrame = 0;
 		_modelAnim?.Reset();
 		base.ResetForBattle();
+	}
+
+	/// <summary>
+	/// 死亡演出（D3，2026-09-15）。由 <see cref="CombatActor._PhysicsProcess"/> 在
+	/// <c>IsDead</c> 后每物理帧调用——这是死亡姿势接到真实链路的**唯一入口**。
+	/// 帧号自己累积、总帧数来自 <see cref="DeathPerformanceFrames"/>（data/**）；
+	/// 播完后 t 停在 1，尸体停在最终倒地姿势。
+	/// </summary>
+	protected override void TickDeathVisual(float dt)
+	{
+		if (_modelAnim is null)
+			return;   // 灰盒降级：没有骨架模型，无死亡姿势可播（与旧行为一致）
+
+		_deathFrame = Mathf.Min(_deathFrame + 1, DeathPerformanceFrames);
+		_modelAnim.Animate(dt, 0f, AshigaruAction.Death, _deathFrame, DeathPerformanceFrames);
 	}
 
 	protected override void OnTickVisual(float dt, float speed01)
@@ -260,11 +284,9 @@ public partial class Ashigaru : CombatActor, IDeathblowTarget
 	/// </summary>
 	private void DriveModel(float dt, float speed01)
 	{
-		if (IsDead)
-		{
-			_modelAnim!.Animate(dt, speed01, AshigaruAction.Death, 0, 0);
-			return;
-		}
+		// 死亡不在这条路上：IsDead 后 _PhysicsProcess 走 TickDeathVisual（D3），
+		// 不再进 OnTickVisual → 这里也不该出现死亡分支（曾经有个永远走不到、
+		// 还写死帧号 0,0 的死代码，就是它让尸体僵在原地的——已删）。
 
 		// 被处决：优先级**高于**破韧（处决是破韧之后发生的，必须覆盖瘫软姿势）
 		if (Machine.Current is DeathblowState executed)
